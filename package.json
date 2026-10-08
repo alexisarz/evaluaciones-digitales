@@ -20,6 +20,7 @@
   "devDependencies": {
     "eslint": "latest",
     "eslint-plugin-react-hooks": "latest",
-    "eslint-plugin-react-refresh": "latest"
+    "eslint-plugin-react-refresh": "latest",
+    "firebase-tools": "^15.32.1"
   }
 }

@@ -9,13 +9,23 @@ export async function crearExamen(datosExamen) {
 }
 
 /** Devuelve únicamente los exámenes creados por el profesor indicado. */
-export async function obtenerExamenesPorProfesor(profesorId) {
-  const examsQuery = query(examsCollection, where('profesorId', '==', String(profesorId)))
+export async function obtenerExamenesPorProfesor(legajoProfe) {
+  const examsQuery = query(examsCollection, where('legajoProfe', '==', Number(legajoProfe)))
   const snapshot = await getDocs(examsQuery)
 
   return snapshot.docs
     .map((exam) => ({ id: exam.id, ...exam.data() }))
     .sort((first, second) => (second.fechaInicio?.toMillis?.() ?? 0) - (first.fechaInicio?.toMillis?.() ?? 0))
+}
+
+/** Exámenes habilitados para alguno de los códigos de curso indicados. */
+export async function obtenerExamenesPorCursos(courseCodes) {
+  if (!courseCodes.length) return []
+  const snapshot = await getDocs(examsCollection)
+  return snapshot.docs
+    .map((exam) => ({ id: exam.id, ...exam.data() }))
+    .filter((exam) => courseCodes.includes(exam.cursoCodigo) && ['programado', 'en_curso'].includes(exam.estado))
+    .sort((first, second) => (first.fechaInicio?.toMillis?.() ?? 0) - (second.fechaInicio?.toMillis?.() ?? 0))
 }
 
 export async function obtenerExamenPorId(examId) {
