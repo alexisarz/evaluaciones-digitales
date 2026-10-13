@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 const dashboardForRole = {
   alumno: '/alumno/misExamenes',
   profesor: '/profesor/misExamenes',
-  admin: '/admin',
+  admin: '/admin/panel',
 }
 
 export default function ProtectedRoute({ allowedRoles }) {

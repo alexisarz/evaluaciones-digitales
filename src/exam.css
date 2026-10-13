@@ -1,0 +1,50 @@
+.clock-in-button { display: inline-block; margin: 12px 0 0; padding: 12px 22px; background: #16803d; color: #fff; font-weight: 800; }
+.exam-delivered { display: inline-block; padding: 10px 15px; border-radius: 8px; background: #dff3e7; color: #21683d; font-weight: 800; }
+.pending-delivery, .exam-resume { padding: 14px 18px; border-radius: 10px; }
+.pending-delivery { background: #fff0d6; color: #79520e; }
+.exam-resume { background: #e1ebfb; color: #244a87; }
+.pending-delivery p, .exam-resume p { margin: 0 0 10px; }
+.pending-delivery button, .exam-resume button { margin: 0; }
+.pending-delivery button { background: #a64021; }
+.exam-resume button { background: #244a87; }
+.student-exam.expired { background: #fff0f0; border-color: #e5a9a9; }
+.student-exam .expired-exam-label { display: inline-block; margin: 9px 0 16px; padding: 9px 13px; border-radius: 8px; background: #f9d8d8; color: #982323; font-weight: 800; }
+.student-exam-schedule { display: grid; gap: 6px; margin: 14px 0 18px; padding: 14px 16px; border: 1px solid #dce4ef; border-radius: 9px; background: #f7f9fd; }
+.student-exam-schedule p { margin: 0; color: #35455f; line-height: 1.45; }
+.student-exam-schedule-unavailable { color: #8a5a0b; font-weight: 700; }
+.student-exam.expired .student-exam-schedule { border-color: #ebc4c4; background: #fff8f8; }
+.confirm-modal .start-exam-error { color: #a32222; font-weight: 700; }
+.status-pill.reprogramado { color: #603f93; background: #e9def8; }
+.status-pill.finalizado { color: #39465c; background: #dfe4ec; }
+.exam-stats { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); }
+
+.exam-screen { min-height: 100vh; display: flex; flex-direction: column; background: #fff; color: #202b3e; }
+.exam-topic-banner { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 1fr 1.5fr auto; align-items: center; gap: 20px; min-height: 85px; padding: 16px 28px; color: #fff; }
+.exam-topic-banner strong { font-size: clamp(24px, 3vw, 36px); line-height: 1.1; }
+.exam-topic-banner span { font-size: 17px; font-weight: 600; }
+.exam-countdown { padding: 10px 16px; border-radius: 9px; background: #fff; color: #244a87; font-size: 22px; font-weight: 800; white-space: nowrap; }
+.exam-countdown.urgent { color: #b42318; box-shadow: 0 0 0 3px #b42318; }
+.exam-restriction { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 16px 28px; border-bottom: 2px solid #dd6a38; background: #ffe1d5; color: #852a19; font-size: 17px; font-weight: 800; line-height: 1.45; }
+.exam-restriction-icon { font-size: 24px; line-height: 1; }
+.exam-restriction button { margin: 0; padding: 4px 8px; background: transparent; color: #852a19; text-decoration: underline; font-weight: 800; }
+.exam-timeout, .exam-time-warning { padding: 13px 28px; background: #b42318; color: #fff; font-weight: 800; }
+.exam-time-warning { background: #fff0d6; color: #8a5a0b; }
+.exam-question-area { flex: 1; width: min(100%, 1180px); margin: 0 auto; padding: 28px; }
+.exam-question-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; color: #647086; font-weight: 700; }
+.save-pill { display: inline-block; padding: 8px 14px; border-radius: 999px; color: #22643d; background: #dff3e7; font-size: 14px; }
+.save-pill.local, .save-pill.pending { color: #805916; background: #fff0d6; }
+.save-pill.local-error { color: #b42318; background: #ffebe9; }
+.exam-question-area h1 { margin: 28px 0 20px; font-size: clamp(23px, 2.6vw, 32px); line-height: 1.3; }
+.question-type-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 25px; }
+.question-type-tabs [role="tab"] { padding: 10px 15px; border: 1px solid #cbd4e1; border-radius: 8px; color: #58667d; background: #f5f7fa; font-weight: 700; }
+.question-type-tabs [aria-selected="true"] { border-color: #244a87; color: #fff; background: #244a87; }
+.answer-label { display: block; margin: 0 0 10px; font-weight: 800; }
+.exam-answer { display: block; width: 100%; min-height: min(42vh, 430px); padding: 18px; border: 1px solid #9dacc2; border-radius: 10px; resize: vertical; color: #202b3e; background: #fff; font: inherit; line-height: 1.6; }
+.exam-answer:disabled { background: #f3f5f8; }
+.exam-footer { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 28px; border-top: 1px solid #d6deea; background: #fff; }
+.exam-nav { display: flex; flex-wrap: wrap; gap: 12px; }.exam-nav button, .exam-submit button { margin: 0; }
+.exam-submit { display: flex; align-items: center; gap: 15px; }.exam-submit .error { max-width: 360px; margin: 0; font-size: 14px; }
+.exam-submit .danger-action { min-height: 48px; white-space: nowrap; }.exam-nav button:disabled, .exam-submit button:disabled { opacity: .5; cursor: not-allowed; }
+.exam-loading { width: min(100% - 40px, 760px); margin: 15vh auto; padding: 30px; border: 1px solid #d7dfeb; border-radius: 12px; background: #fff; text-align: center; }
+.result-page { display: grid; place-items: center; padding: 30px; }.result-card { width: min(100%, 580px); padding: 44px; border: 1px solid #cfd8e5; border-radius: 16px; background: #fff; box-shadow: 0 12px 36px #1b263b14; text-align: center; }.result-card h1 { margin: 18px 0 12px; font-size: 29px; }.result-card p { color: #58667d; line-height: 1.6; }.result-card .primary-action { margin-top: 15px; }.result-icon { display: grid; place-items: center; width: 86px; height: 86px; margin: auto; border-radius: 50%; font-size: 55px; font-weight: 800; }.result-card.success .result-icon { color: #16803d; background: #dff3e7; }.result-card.failed .result-icon { color: #b42318; background: #ffebe9; }
+@media (max-width: 700px) { .exam-topic-banner { grid-template-columns: 1fr auto; padding: 14px 18px; }.exam-topic-banner span { grid-column: 1 / -1; grid-row: 2; }.exam-countdown { grid-column: 2; grid-row: 1; font-size: 16px; }.exam-question-area { padding: 20px; }.exam-footer { align-items: stretch; flex-direction: column; padding: 15px 20px; }.exam-submit { align-items: stretch; flex-direction: column; }.exam-submit .error { max-width: none; }.exam-submit button { width: 100%; }.exam-nav button { flex: 1; } }
