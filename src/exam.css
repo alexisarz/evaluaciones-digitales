@@ -46,5 +46,11 @@
 .exam-submit { display: flex; align-items: center; gap: 15px; }.exam-submit .error { max-width: 360px; margin: 0; font-size: 14px; }
 .exam-submit .danger-action { min-height: 48px; white-space: nowrap; }.exam-nav button:disabled, .exam-submit button:disabled { opacity: .5; cursor: not-allowed; }
 .exam-loading { width: min(100% - 40px, 760px); margin: 15vh auto; padding: 30px; border: 1px solid #d7dfeb; border-radius: 12px; background: #fff; text-align: center; }
+.preview-banner .preview-pill { justify-self: end; padding: 10px 14px; border-radius: 9px; background: #fff; color: #244a87; font-size: 15px; white-space: nowrap; }
+.preview-topic-switcher { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px 28px; border-bottom: 1px solid #d6deea; background: #f8faff; }
+.preview-topic-switcher button { margin: 0; color: #fff; font-weight: 800; opacity: .72; }
+.preview-topic-switcher button[aria-pressed="true"] { opacity: 1; outline: 3px solid #202b3e; outline-offset: 2px; }
+.preview-note { padding: 8px 14px; border-radius: 999px; color: #244a87; background: #e1ebfb; font-size: 14px; }
+.preview-exit { white-space: nowrap; }
 .result-page { display: grid; place-items: center; padding: 30px; }.result-card { width: min(100%, 580px); padding: 44px; border: 1px solid #cfd8e5; border-radius: 16px; background: #fff; box-shadow: 0 12px 36px #1b263b14; text-align: center; }.result-card h1 { margin: 18px 0 12px; font-size: 29px; }.result-card p { color: #58667d; line-height: 1.6; }.result-card .primary-action { margin-top: 15px; }.result-icon { display: grid; place-items: center; width: 86px; height: 86px; margin: auto; border-radius: 50%; font-size: 55px; font-weight: 800; }.result-card.success .result-icon { color: #16803d; background: #dff3e7; }.result-card.failed .result-icon { color: #b42318; background: #ffebe9; }
 @media (max-width: 700px) { .exam-topic-banner { grid-template-columns: 1fr auto; padding: 14px 18px; }.exam-topic-banner span { grid-column: 1 / -1; grid-row: 2; }.exam-countdown { grid-column: 2; grid-row: 1; font-size: 16px; }.exam-question-area { padding: 20px; }.exam-footer { align-items: stretch; flex-direction: column; padding: 15px 20px; }.exam-submit { align-items: stretch; flex-direction: column; }.exam-submit .error { max-width: none; }.exam-submit button { width: 100%; }.exam-nav button { flex: 1; } }

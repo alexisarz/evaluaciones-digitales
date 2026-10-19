@@ -4,6 +4,7 @@ import { collection, getDocs } from 'firebase/firestore'
 import AdminShell from '../components/AdminShell'
 import { db } from '../firebase'
 import { crearCursoAdmin, crearUsuarioAdmin } from '../services/adminService'
+import DigitsOnlyInput from '../shared/components/DigitsOnlyInput'
 
 const details = {
   alumno: { title: 'Alta de alumno', section: 'alumnos' },
@@ -85,7 +86,7 @@ export default function AdminCreatePage({ type }) {
         </div>{!loadingOptions && !professors.length && <p className="admin-form-note">Primero necesitás dar de alta un profesor activo.</p>}</section>
       </> : <>
         <section className="admin-form-card"><h2>Datos personales</h2><div className="admin-form-grid">
-          <label>Legajo<input name="legajo" type="number" min="1" step="1" value={form.legajo} onChange={change} required placeholder="1098765" /></label>
+          <label>Legajo<DigitsOnlyInput name="legajo" value={form.legajo} onChange={(legajo) => setForm((current) => ({ ...current, legajo }))} required placeholder="1098765" /></label>
           <label>Nombre<input name="nombre" value={form.nombre} onChange={change} required /></label>
           <label>Apellido<input name="apellido" value={form.apellido} onChange={change} required /></label>
         </div><p className="admin-form-note">Se guardará como activo, pendiente de activación y sin contraseña. No se crea aún una cuenta en Firebase Auth.</p></section>

@@ -1,19 +1,23 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
+import SessionBootstrap from './features/auth/SessionBootstrap'
 import ProtectedRoute from './components/ProtectedRoute'
-import LoginPage from './pages/LoginPage'
-import StudentExamsPage from './pages/StudentExamsPage'
-import TakeExamPage from './pages/TakeExamPage'
-import ExamResultPage from './pages/ExamResultPage'
-import TeacherExamsPage from './pages/TeacherExamsPage'
-import NewExamPage from './pages/NewExamPage'
-import AdminPage from './pages/AdminPage'
-import AdminCreatePage from './pages/AdminCreatePage'
+
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const StudentExamsPage = lazy(() => import('./pages/StudentExamsPage'))
+const TakeExamPage = lazy(() => import('./pages/TakeExamPage'))
+const ExamResultPage = lazy(() => import('./pages/ExamResultPage'))
+const TeacherExamsPage = lazy(() => import('./pages/TeacherExamsPage'))
+const NewExamPage = lazy(() => import('./pages/NewExamPage'))
+const ExamPreviewPage = lazy(() => import('./pages/ExamPreviewPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const AdminCreatePage = lazy(() => import('./pages/AdminCreatePage'))
 
 export default function App() {
   return (
-    <AuthProvider>
+    <SessionBootstrap>
       <BrowserRouter>
+        <Suspense fallback={<p className="status">Cargando pantalla…</p>}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute allowedRoles={['alumno']} />}>
@@ -24,8 +28,10 @@ export default function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['profesor']} />}>
             <Route path="/profesor/misExamenes" element={<TeacherExamsPage />} />
+            <Route path="/profesor/examenesArchivados" element={<TeacherExamsPage archived />} />
             <Route path="/profesor/nuevoExamen" element={<NewExamPage />} />
             <Route path="/profesor/editarExamen" element={<NewExamPage />} />
+            <Route path="/profesor/examPreview" element={<ExamPreviewPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<Navigate to="/admin/panel" replace />} />
@@ -36,7 +42,8 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
-    </AuthProvider>
+    </SessionBootstrap>
   )
 }

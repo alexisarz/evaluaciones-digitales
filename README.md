@@ -2,12 +2,40 @@
 
 Base en React + Vite para exámenes universitarios, con Firebase Authentication y Firestore.
 
+## Arquitectura
+
+El estado compartido se organiza por dominio con Redux Toolkit. `src/app/store.js` registra los slices de autenticación, exámenes del profesor, exámenes del alumno y administración. Cada slice define reducers (las mutaciones de estado), acciones asíncronas para cargar/actualizar datos y selectores para leer datos derivados. Los servicios de `src/services/` son la capa de acceso a Firebase; las vistas no deben duplicar esas consultas cuando hay una acción del dominio.
+
+Las fechas de Firestore se convierten a texto ISO antes de entrar al store para mantenerlo serializable. El estado que sólo interesa a una pantalla —por ejemplo campos de un formulario, un modal o el autoguardado de una rendición activa— permanece local. Componentes reutilizables como diálogos, campos y tarjetas están en `src/shared/components/`. Las nuevas funciones deben seguir las reglas de `AGENTS.md`.
+
+```text
+src/app/                 configuración del store
+src/features/            slices, acciones y selectores por dominio
+src/services/            acceso a Firebase y persistencia local
+src/shared/components/   piezas visuales reutilizables
+src/pages/               pantallas conectadas a las rutas
+```
+
+Para comprobar el estado sin depender de Firebase: `npm run test:unit`. También están disponibles `npm run lint` y `npm run build`.
+
 ## Ejecutar
 
 ```bash
 npm install
 npm run dev
 ```
+
+## Pruebas del login con Playwright
+
+Playwright está agregado como dependencia de desarrollo y configurado para usar el Google Chrome ya instalado en la Mac (`channel: 'chrome'`). No hace falta ejecutar `npx playwright install` ni descargar otro navegador.
+
+Desde la carpeta del proyecto:
+
+```bash
+npm run test:e2e
+```
+
+El comando inicia Vite automáticamente, ejecuta cinco pruebas de la pantalla `/login` y genera un informe HTML en `playwright-report`. Para abrirlo: `npx playwright show-report`. Las pruebas comprueban el formulario, validación obligatoria, primer ingreso, recupero de contraseña y legajo inválido. No utilizan credenciales reales ni crean cuentas en Firebase. Un ingreso exitoso con Firebase requiere una prueba separada con datos de prueba controlados.
 
 ## Autenticación
 

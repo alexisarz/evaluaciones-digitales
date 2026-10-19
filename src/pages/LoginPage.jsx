@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../features/auth/useAuth'
+import DigitsOnlyInput from '../shared/components/DigitsOnlyInput'
+import PasswordInput from '../shared/components/PasswordInput'
 
 const routeForRole = {
   alumno: '/alumno/misExamenes',
@@ -45,12 +47,9 @@ export default function LoginPage() {
         <p>{firstAccess ? 'Definí tu contraseña para activar la cuenta.' : 'Ingresá con tu legajo y contraseña.'}</p>
         <label>
           Legajo
-          <input value={legajo} onChange={(e) => setLegajo(e.target.value)} inputMode="numeric" required />
+          <DigitsOnlyInput value={legajo} onChange={setLegajo} autoComplete="username" required />
         </label>
-        <label>
-          Contraseña
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength="6" required />
-        </label>
+        <div className="login-field"><label htmlFor="login-password">Contraseña</label><PasswordInput id="login-password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={firstAccess ? 'new-password' : 'current-password'} minLength="6" required /></div>
         {error && <p className="error" role="alert">{error}</p>}
         <button disabled={submitting}>{submitting ? 'Procesando…' : firstAccess ? 'Activar cuenta' : 'Ingresar'}</button>
         <button type="button" className="link-button" onClick={() => setFirstAccess(!firstAccess)}>
