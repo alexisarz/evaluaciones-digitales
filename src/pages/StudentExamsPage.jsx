@@ -5,6 +5,7 @@ import { useAuth } from '../features/auth/useAuth'
 import { attemptToDraft, comenzarORecuperarExamen, entregarExamen, obtenerIntento } from '../services/examAttemptService'
 import { eliminarBorradorLocal, guardarBorradorLocal } from '../services/localExamDraft'
 import { attemptUpserted, loadStudentExams, localDraftRemoved, selectAttemptsByExam, selectStudentCourses, selectStudentLoadError, selectStudentLoading, selectStudentLocalDrafts, selectVisibleStudentExams } from '../features/studentExams/studentExamsSlice'
+import { getPublishedGrade } from '../features/studentExams/studentGrades'
 import { examWindowMessage, formatExamDateTime, getExamSchedule, getExamWindowStatus } from '../utils/examWindow'
 import ConfirmDialog from '../shared/components/ConfirmDialog'
 
@@ -98,6 +99,8 @@ export default function StudentExamsPage() {
       {!loading && courses.length > 0 && visibleExams.length === 0 && <p className="notice">No hay exámenes habilitados para tus cursos.</p>}
       <div className="student-exams">{visibleExams.map((exam) => {
         const attempt = attemptsByExam.get(exam.id)
+        const publishedGrade = getPublishedGrade(attempt)
+        const maximumGrade = attempt?.preguntas?.reduce((total, question) => total + Number(question.puntajeMaximo ?? 0), 0)
         const selected = selectedTopics[exam.id]
         const schedule = getExamSchedule(exam)
         const examWindow = getExamWindowStatus(exam, now)
@@ -108,7 +111,7 @@ export default function StudentExamsPage() {
           <h2>{exam.nombre}</h2>
           {schedule ? <div className="student-exam-schedule"><p><strong>Inicio:</strong> {formatExamDateTime(schedule.startMs)}</p><p><strong>Tolerancia para ingresar:</strong> {schedule.toleranceMinutes} min · hasta el {formatExamDateTime(schedule.deadlineMs)}</p><p><strong>Finaliza:</strong> {formatExamDateTime(schedule.endMs)} ({schedule.durationMinutes} min desde el inicio programado)</p></div> : <p className="student-exam-schedule-unavailable">Fecha y tolerancia de ingreso no disponibles.</p>}
           {expired && <p className="expired-exam-label">{timeOver && attempt?.estadoEntrega === 'en_curso' ? 'Terminó el tiempo. Ingresá para entregar tus respuestas.' : examWindowMessage(examWindow)}</p>}
-          {attempt?.estadoEntrega === 'entregado' && <p className="exam-delivered">Entregado · Corrección {attempt.estadoCorreccion ?? 'pendiente'}</p>}
+          {attempt?.estadoEntrega === 'entregado' && <p className="exam-delivered">Entregado · Corrección {attempt.estadoCorreccion ?? 'pendiente'}{publishedGrade !== null && <> · Nota: {publishedGrade}{maximumGrade > 0 && ` / ${maximumGrade}`}</>}</p>}
           {attempt?.estadoEntrega === 'pendiente_envio' && <div className="pending-delivery"><p>Entrega pendiente por un error de conexión. Tus respuestas están guardadas en este dispositivo.</p><button type="button" onClick={() => retry(attempt)} disabled={retryingId === exam.id}>{retryingId === exam.id ? 'Reintentando…' : 'REINTENTAR ENTREGA'}</button></div>}
           {attempt?.estadoEntrega === 'en_curso' && <div className="exam-resume"><p>{timeOver ? 'Tiempo agotado' : 'Examen en curso'} · {attempt.tema?.nombreTema}</p><button type="button" onClick={() => navigate(`/alumno/realizarExamen?id=${encodeURIComponent(exam.id)}`)}>{timeOver ? 'Finalizar entrega' : 'Continuar examen'}</button></div>}
           {!attempt && ['upcoming', 'open'].includes(examWindow.status) && (selected ? <div className="selected-topic" style={{ backgroundColor: selected.color ?? '#244a87' }}><strong>TEMA: {selected.nombreTema}</strong><p>Confirmá para comenzar. Después no podrás cambiar de tema.</p><button type="button" className="clock-in-button" onClick={() => { setStartError(''); setConfirmExam(exam) }}>CLOCK IN</button></div> : <div><p>Seleccioná tu tema:</p><div className="student-topic-list">{exam.temas?.map((topic) => <button key={topic.nombreTema} type="button" style={{ backgroundColor: topic.color ?? '#244a87' }} onClick={() => setSelectedTopics((current) => ({ ...current, [exam.id]: topic }))}>{topic.nombreTema}</button>)}</div></div>)}

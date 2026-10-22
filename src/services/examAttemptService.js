@@ -113,6 +113,7 @@ export async function comenzarORecuperarExamen(exam, selectedTopic, profile) {
       estadoCorreccion: 'pendiente',
       incidentes: [],
       nota: null,
+      notaPublicada: false,
       ultimaEdicionMs: now,
       ultimaActualizacion: serverTimestamp(),
     }
@@ -183,6 +184,7 @@ export async function entregarExamen(attempt, draft, motivo = 'manual') {
     estadoEntrega: 'entregado',
     estadoCorreccion: 'pendiente',
     nota: null,
+    notaPublicada: false,
     finalizacion: 'exitosa',
     motivoEntrega: motivo,
     ultimaEdicionMs: draft.ultimaEdicionMs,

@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [firstAccess, setFirstAccess] = useState(false)
   const [error, setError] = useState('')
+  const [errorCode, setErrorCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showRecovery, setShowRecovery] = useState(false)
 
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setErrorCode('')
     setSubmitting(true)
     try {
       const profile = firstAccess
@@ -32,9 +34,11 @@ export default function LoginPage() {
         : await login(legajo, password)
       navigate(routeForRole[profile.rol] ?? '/login', { replace: true })
     } catch (submitError) {
+      setErrorCode(submitError.code ?? '')
       setError(firstAccess
         ? (submitError.message || 'No se pudo activar la cuenta.')
-        : 'No se pudo iniciar sesión con esas credenciales.')
+        : ['account/inactive', 'account/reset-required'].includes(submitError.code)
+          ? submitError.message : 'No se pudo iniciar sesión con esas credenciales.')
     } finally {
       setSubmitting(false)
     }
@@ -50,7 +54,7 @@ export default function LoginPage() {
           <DigitsOnlyInput value={legajo} onChange={setLegajo} autoComplete="username" required />
         </label>
         <div className="login-field"><label htmlFor="login-password">Contraseña</label><PasswordInput id="login-password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={firstAccess ? 'new-password' : 'current-password'} minLength="6" required /></div>
-        {error && <p className="error" role="alert">{error}</p>}
+        {error && <p className="error" role="alert">{errorCode === 'account/inactive' ? <>Tu usuario se encuentra dado de baja, contactá con el administrador a <a href="mailto:admin_evaluaciondigital@uade.com.ar">admin_evaluaciondigital@uade.com.ar</a></> : error}</p>}
         <button disabled={submitting}>{submitting ? 'Procesando…' : firstAccess ? 'Activar cuenta' : 'Ingresar'}</button>
         <button type="button" className="link-button" onClick={() => setFirstAccess(!firstAccess)}>
           {firstAccess ? 'Ya tengo contraseña' : 'Es mi primer ingreso'}

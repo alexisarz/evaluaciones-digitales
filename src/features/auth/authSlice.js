@@ -1,12 +1,11 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import * as authService from '../../services/authService'
-import { auth } from '../../firebase'
 import { serializeFirestore } from '../../shared/serializeFirestore'
 
-export const restoreSession = createAsyncThunk('auth/restoreSession', async (firebaseUser, { rejectWithValue }) => {
-  try { return serializeFirestore(await authService.getProfileFromAuthUser(firebaseUser)) }
+export const restoreSession = createAsyncThunk('auth/restoreSession', async (legajo, { rejectWithValue }) => {
+  try { return serializeFirestore(await authService.restoreSession(legajo)) }
   catch (error) {
-    if (auth.currentUser?.uid === firebaseUser.uid) await authService.logout().catch(() => {})
+    authService.logout()
     return rejectWithValue(error.message || 'No se pudo recuperar la sesión.')
   }
 })

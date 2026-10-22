@@ -86,4 +86,13 @@ export const selectTeacherExamCounts = createSelector([selectVisibleTeacherExams
     borrador: visible.filter((exam) => exam.estadoVisible === 'borrador').length,
 }))
 
+export const selectFinalizedTeacherExams = createSelector(
+  [selectTeacherExams, selectTeacherCourses, (_state, courseCode) => courseCode, (_state, _courseCode, now) => now],
+  (exams, courses, courseCode, now) => {
+    const assignedCodes = new Set(courses.map((course) => course.idCurso ?? course.id))
+    return exams.filter((exam) => assignedCodes.has(exam.cursoCodigo) &&
+      (!courseCode || exam.cursoCodigo === courseCode) && getEffectiveExamStatus(exam, now) === 'finalizado')
+  },
+)
+
 export default teacherExamsSlice.reducer

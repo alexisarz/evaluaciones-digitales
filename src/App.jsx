@@ -10,8 +10,12 @@ const ExamResultPage = lazy(() => import('./pages/ExamResultPage'))
 const TeacherExamsPage = lazy(() => import('./pages/TeacherExamsPage'))
 const NewExamPage = lazy(() => import('./pages/NewExamPage'))
 const ExamPreviewPage = lazy(() => import('./pages/ExamPreviewPage'))
+const CorrectionsPage = lazy(() => import('./pages/CorrectionsPage'))
+const CorrectionAttemptsPage = lazy(() => import('./pages/CorrectionAttemptsPage'))
+const CorrectionDetailPage = lazy(() => import('./pages/CorrectionDetailPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminCreatePage = lazy(() => import('./pages/AdminCreatePage'))
+const AdminEditPage = lazy(() => import('./pages/AdminEditPage'))
 
 export default function App() {
   return (
@@ -32,6 +36,9 @@ export default function App() {
             <Route path="/profesor/nuevoExamen" element={<NewExamPage />} />
             <Route path="/profesor/editarExamen" element={<NewExamPage />} />
             <Route path="/profesor/examPreview" element={<ExamPreviewPage />} />
+            <Route path="/profesor/correcciones" element={<CorrectionsPage />} />
+            <Route path="/profesor/corregirExamen" element={<CorrectionAttemptsPage />} />
+            <Route path="/profesor/corregirExamen/examenAlumno" element={<CorrectionDetailPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<Navigate to="/admin/panel" replace />} />
@@ -39,6 +46,9 @@ export default function App() {
             <Route path="/admin/nuevoAlumno" element={<AdminCreatePage type="alumno" />} />
             <Route path="/admin/nuevoProfesor" element={<AdminCreatePage type="profesor" />} />
             <Route path="/admin/nuevaMateria" element={<AdminCreatePage type="curso" />} />
+            <Route path="/admin/panel/editarAlumno" element={<AdminEditPage type="alumno" />} />
+            <Route path="/admin/panel/editarProfesor" element={<AdminEditPage type="profesor" />} />
+            <Route path="/admin/panel/editarMateria" element={<AdminEditPage type="curso" />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

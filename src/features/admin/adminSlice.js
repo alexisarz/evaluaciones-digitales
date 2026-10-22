@@ -1,8 +1,16 @@
-import { createSelector, createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { serializeFirestore } from '../../shared/serializeFirestore'
 import { logout, sessionCleared } from '../auth/authSlice'
+import { actualizarCursoAdmin, actualizarUsuarioAdmin, cambiarEstadoUsuarioAdmin, obtenerCursoAdmin, obtenerUsuarioAdmin, restablecerContrasenaAdmin } from '../../services/adminService'
+
+export const loadAdminUser = createAsyncThunk('admin/loadUser', async (legajo) => serializeFirestore(await obtenerUsuarioAdmin(legajo)))
+export const loadAdminCourse = createAsyncThunk('admin/loadCourse', async (code) => serializeFirestore(await obtenerCursoAdmin(code)))
+export const saveAdminUser = createAsyncThunk('admin/saveUser', (values) => actualizarUsuarioAdmin(values))
+export const saveAdminCourse = createAsyncThunk('admin/saveCourse', (values) => actualizarCursoAdmin(values))
+export const setAdminUserActive = createAsyncThunk('admin/setUserActive', ({ legajo, activo }) => cambiarEstadoUsuarioAdmin(legajo, activo))
+export const resetAdminPassword = createAsyncThunk('admin/resetPassword', (legajo) => restablecerContrasenaAdmin(legajo))
 
 const adminSlice = createSlice({
   name: 'admin',
@@ -24,14 +32,17 @@ export const { usersReceived, coursesReceived, usersFailed, coursesFailed, admin
 export const selectAdminUsersReady = (state) => state.admin.usersReady
 export const selectAdminCoursesReady = (state) => state.admin.coursesReady
 export const selectAdminLoadError = (state) => state.admin.loadError
-const selectAdminUsers = (state) => state.admin.users
-const selectAdminCourses = (state) => state.admin.courses
+export const selectAdminUsers = (state) => state.admin.users
+export const selectAdminCourses = (state) => state.admin.courses
 
 export function subscribeAdminData(dispatch) {
   let active = true
   dispatch(adminLoadStarted())
   const unsubscribeUsers = onSnapshot(collection(db, 'users'),
-    (snapshot) => { if (active) dispatch(usersReceived(serializeFirestore(snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))))) },
+    (snapshot) => { if (active) dispatch(usersReceived(serializeFirestore(snapshot.docs.map((item) => {
+      const { passwordHash, passwordSalt, ...profile } = item.data()
+      return { ...profile, id: item.id, claveFirestoreConfigurada: Boolean(passwordHash && passwordSalt) }
+    })))) },
     () => { if (active) dispatch(usersFailed()) })
   const unsubscribeCourses = onSnapshot(collection(db, 'cursos'),
     (snapshot) => { if (active) dispatch(coursesReceived(serializeFirestore(snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))))) },
@@ -39,7 +50,7 @@ export function subscribeAdminData(dispatch) {
   return () => { active = false; unsubscribeUsers(); unsubscribeCourses() }
 }
 
-const statusOf = (profile) => profile.activo === false ? 'Inactivo' : profile.contrasenaActiva !== true ? 'Pendiente de activación' : 'Activo'
+const statusOf = (profile) => profile.activo === false ? 'Inactivo' : profile.contrasenaActiva !== true || profile.claveFirestoreConfigurada !== true ? 'Pendiente de activación' : 'Activo'
 const normalize = (value) => String(value ?? '').toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 export const selectAdminRows = createSelector(

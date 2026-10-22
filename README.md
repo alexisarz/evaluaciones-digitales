@@ -1,6 +1,6 @@
 # Sistema de Evaluación Digital
 
-Base en React + Vite para exámenes universitarios, con Firebase Authentication y Firestore.
+Base en React + Vite para exámenes universitarios. En este prototipo, el acceso y los datos usan Firestore sin Firebase Authentication.
 
 ## Arquitectura
 
@@ -35,11 +35,19 @@ Desde la carpeta del proyecto:
 npm run test:e2e
 ```
 
-El comando inicia Vite automáticamente, ejecuta cinco pruebas de la pantalla `/login` y genera un informe HTML en `playwright-report`. Para abrirlo: `npx playwright show-report`. Las pruebas comprueban el formulario, validación obligatoria, primer ingreso, recupero de contraseña y legajo inválido. No utilizan credenciales reales ni crean cuentas en Firebase. Un ingreso exitoso con Firebase requiere una prueba separada con datos de prueba controlados.
+El comando inicia Vite automáticamente, ejecuta las pruebas de la pantalla `/login` y genera un informe HTML en `playwright-report`. Para abrirlo: `npx playwright show-report`. Las pruebas comprueban el formulario, validación obligatoria, primer ingreso, recupero de contraseña y legajo inválido. No utilizan credenciales reales ni crean cuentas en Firebase. Un ingreso exitoso con Firebase requiere una prueba separada con datos de prueba controlados.
 
 ## Autenticación
 
-Los documentos de `users` deben existir antes del primer acceso y usar el legajo como ID. El primer ingreso crea la cuenta Auth con `<legajo>@evaluacionuade.edu.ar` y activa `contrasenaActiva`. Los siguientes accesos verifican nuevamente el perfil, estado `activo` y rol desde Firestore.
+Los documentos de `users` deben existir antes del primer acceso y usar el legajo como ID. El primer ingreso calcula en el navegador una derivación PBKDF2-SHA256 con sal aleatoria y guarda `passwordHash`, `passwordSalt` y `contrasenaActiva: true` en el documento. No se guarda la contraseña en texto plano. Los siguientes accesos comparan la contraseña ingresada con esa derivación y comprueban `activo` y rol. La sesión conserva el legajo en `localStorage` y se revalida contra Firestore al recargar.
+
+**Migración desde Firebase Auth:** las claves existentes no se pueden leer ni convertir. Antes de usar la nueva versión, poner `contrasenaActiva: false` en el documento `users` del administrador desde Firebase Console; luego entrar por «Es mi primer ingreso» y definir una clave nueva. Una vez dentro, el administrador puede restablecer las claves de alumnos y profesores desde sus fichas para que también las definan de nuevo. No hace falta eliminar las cuentas viejas de Firebase Auth: esta versión no las consulta. Un documento con `contrasenaActiva: true` pero sin `passwordHash`/`passwordSalt` requiere blanqueo. Los exámenes y notas existentes permanecen vinculados por legajo.
+
+## Administración y blanqueo de claves
+
+Las pantallas de edición permiten modificar nombre, apellido, cursos del alumno, materia, comisiones y profesor responsable. La baja conserva el documento en `users` y marca `activo: false`; la sesión abierta se cierra al recibir el cambio. Si el profesor aún está a cargo de un curso, hay que reasignarlo antes de darle de baja; tampoco se mueve ni se da de baja a un alumno con un intento en curso.
+
+El blanqueo elimina `passwordHash` y `passwordSalt`, marca `contrasenaActiva: false` y permite definir una clave nueva desde «Es mi primer ingreso». Las operaciones registran el legajo declarado del administrador en `auditoria`. Ya no dependen de Cloud Functions ni requieren el plan Blaze. Los archivos antiguos de `functions/` quedan como referencia, pero `firebase.json` no los despliega.
 
 ## Rendición de exámenes
 
@@ -49,10 +57,10 @@ Durante la rendición, las respuestas se guardan cada 10 segundos en Firestore y
 
 En el panel del profesor, `En curso` y `Finalizado` se calculan desde la fecha y duración al visualizar el examen, incluso si nadie dejó el panel abierto al producirse el cambio de hora. Al editar la fecha antes del inicio, el documento se guarda como `reprogramado`; durante y después del examen no se permite editar. Los cambios automáticos por horario no escriben `examenes.estado` en Firestore: para persistirlos sin clientes conectados se necesita un proceso programado del lado del servidor. La misma restricción temporal debe aplicarse en reglas o backend para impedir clientes modificados.
 
-Los permisos de Firestore deben permitir que el alumno lea y actualice únicamente su propio intento y que el profesor consulte los intentos de sus cursos. La colección no necesita crearse manualmente, pero sin reglas compatibles las operaciones serán rechazadas. No se modifican reglas ni se despliegan cambios de Firebase desde este proyecto.
+La colección no necesita crearse manualmente, pero sin reglas compatibles las operaciones serán rechazadas. No se modifican reglas ni se despliegan cambios de Firebase desde este proyecto.
 
 ## Seguridad pendiente para producción
 
-El flujo de primer acceso necesita poder localizar un legajo antes de autenticarlo. No se debe resolver abriendo la colección `users` a lectura pública. Antes de producción, trasladar esa validación/activación a un endpoint de confianza (por ejemplo, una Cloud Function callable) y aplicar reglas de Firestore que limiten cada usuario a su propio documento.
+**Este modo sólo es apto para una demo sin datos personales ni académicos reales.** Sin Firebase Auth, Firestore ve todas las solicitudes como anónimas; las reglas no pueden distinguir administrador, profesor y alumno. Para que funcionen el login, las altas, el blanqueo y los exámenes desde el navegador, las reglas tendrán que permitir lecturas y escrituras anónimas en las colecciones usadas. Cualquier persona con la configuración pública de Firebase podría leer los hashes, alterar roles, activar legajos o modificar notas; el hash y la validación de rol de React no impiden eso. La sesión en `localStorage` tampoco es una credencial verificable. No publicar este prototipo con datos reales ni presentar el login como seguro. Para producción, recuperar Firebase Auth u otro backend confiable y aplicar reglas por identidad.
 
 La pantalla completa y `visibilitychange` ofrecen avisos en una web, pero no bloquean el sistema operativo ni garantizan prevención de trampas. Para un examen de alta seguridad hacen falta un cliente kiosk nativo y validaciones del intento, temporizador y permisos en un backend confiable. La inscripción por comisión requiere un dato adicional en `users`: hoy `cursosActivos` sólo permite comprobar el código de curso.

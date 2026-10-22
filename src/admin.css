@@ -21,8 +21,13 @@
 .admin-table-card td { padding: 16px 20px; }
 .admin-row-actions { display: flex; gap: 8px; white-space: nowrap; }
 .admin-row-actions button { margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 800; }
+.admin-row-actions a { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 800; text-decoration: none; }
 .admin-edit-action { color: #244a87; background: #e7eefb; }
 .admin-delete-action { color: #b42318; background: #fce8e7; }
+.admin-activate-action { color: #21683d; background: #dff3e7; }
+.admin-reset-password { min-height: 44px; padding: 10px 16px; border: 1px solid #dbad35; border-radius: 8px; color: #593d00; background: #ffdf82; font-weight: 800; cursor: pointer; }
+.admin-reset-password:disabled { opacity: .6; cursor: wait; }
+.admin-back-link { display: inline-block; margin: 0 0 13px; padding: 0; border: 0; background: none; color: #244a87; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .admin-row-actions button:disabled { opacity: .5; cursor: not-allowed; }
 .admin-user-status { display: inline-block; padding: 7px 12px; border-radius: 99px; font-size: 13px; font-weight: 800; white-space: nowrap; }
 .admin-user-status.active { color: #247044; background: #def2e6; }

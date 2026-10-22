@@ -11,7 +11,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+    command: './node_modules/.bin/vite --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173/login',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
