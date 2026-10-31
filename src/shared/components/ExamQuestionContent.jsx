@@ -1,3 +1,5 @@
+import StructuredAnswer from './StructuredAnswer'
+
 const TYPES = ['Texto', 'Tabla de decisión', 'Árbol de decisión', 'Prueba unitaria']
 
 export default function ExamQuestionContent({ question, answer, onAnswerChange, disabled = false, inputId = 'exam-answer' }) {
@@ -7,7 +9,9 @@ export default function ExamQuestionContent({ question, answer, onAnswerChange, 
     <div className="question-type-tabs" role="tablist" aria-label="Tipo de pregunta">
       {TYPES.map((type) => <span key={type} role="tab" aria-selected={activeType === type} className={activeType === type ? 'active' : ''}>{type}</span>)}
     </div>
-    <label className="answer-label" htmlFor={inputId}>Tu respuesta</label>
-    <textarea id={inputId} className="exam-answer" value={answer} onChange={onAnswerChange} disabled={disabled} placeholder="Escribí tu respuesta aquí…" />
+    <label className="answer-label" htmlFor={activeType === 'Tabla de decisión' || activeType === 'Árbol de decisión' ? undefined : inputId}>Tu respuesta</label>
+    {activeType === 'Tabla de decisión' || activeType === 'Árbol de decisión'
+      ? <StructuredAnswer type={activeType} value={answer} onChange={onAnswerChange} disabled={disabled} />
+      : <textarea id={inputId} className="exam-answer" value={typeof answer === 'string' ? answer : ''} onChange={(event) => onAnswerChange(event.target.value)} disabled={disabled} placeholder="Escribí tu respuesta aquí…" />}
   </>
 }

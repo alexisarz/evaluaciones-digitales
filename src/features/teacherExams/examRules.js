@@ -10,11 +10,15 @@ export function assertValidQuestionScores(temas) {
   }
 }
 
+/** El editor de una pregunta nueva no pertenece a `preguntas` hasta que se agrega. */
+export const savedTopicScore = (tema) =>
+  (tema?.preguntas ?? []).reduce((total, pregunta) => total + Number(pregunta.puntaje), 0)
+
 export function hasTenPointsPerTopic(temas) {
   return Array.isArray(temas) && temas.length > 0 && temas.every((tema) =>
     Array.isArray(tema.preguntas) && tema.preguntas.length > 0 &&
     tema.preguntas.every((pregunta) => isValidQuestionScore(pregunta.puntaje)) &&
-    tema.preguntas.reduce((total, pregunta) => total + Number(pregunta.puntaje), 0) === 10)
+    savedTopicScore(tema) === 10)
 }
 
 export function assertExamCanPublish(exam, now = Date.now()) {
@@ -26,3 +30,10 @@ export function assertExamCanPublish(exam, now = Date.now()) {
 
 export const isExamDeletable = (exam, now = Date.now()) => isExamEditable(exam, now) && !exam?.archivado
 export const isExamArchivable = (exam, now = Date.now()) => getEffectiveExamStatus(exam, now) === 'finalizado' && !exam?.archivado
+
+export const countDeliveredAttempts = (attempts) => attempts.reduce((counts, attempt) => {
+  if (attempt.examenId && attempt.estadoEntrega === 'entregado' && attempt.motivoEntrega !== 'ausente') {
+    counts[attempt.examenId] = (counts[attempt.examenId] ?? 0) + 1
+  }
+  return counts
+}, {})

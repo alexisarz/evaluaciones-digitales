@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import reducer, { finishCorrection, loadCorrectionExam, saveCorrectionDraft, selectFilteredCorrectionDeliveries } from '../../src/features/corrections/correctionsSlice'
-import { correctionTone, correctionTotal, normalizeCorrection } from '../../src/features/corrections/correctionRules'
+import reducer, { finishCorrection, loadCorrectionDelivery, loadCorrectionExam, saveCorrectionDraft, selectCorrectionExpectedAnswers, selectFilteredCorrectionDeliveries } from '../../src/features/corrections/correctionsSlice'
+import { correctionTone, correctionTotal, isValidScoreInput, normalizeCorrection } from '../../src/features/corrections/correctionRules'
 import { selectFinalizedTeacherExams } from '../../src/features/teacherExams/teacherExamsSlice'
 import { getPublishedGrade } from '../../src/features/studentExams/studentGrades'
+import { sessionCleared } from '../../src/features/auth/authSlice'
 
 const questions = [{ idPregunta: 1, puntajeMaximo: 2 }, { idPregunta: 2, puntajeMaximo: 8 }]
 
@@ -20,6 +21,24 @@ describe('validación de correcciones', () => {
     expect(() => normalizeCorrection(questions, [{ idPregunta: 1, puntaje: -1 }])).toThrow('entre 0 y 2')
     expect(() => normalizeCorrection(questions, [{ idPregunta: 1, puntaje: 2.1 }])).toThrow('entre 0 y 2')
     expect(() => normalizeCorrection(questions, [{ idPregunta: 99, puntaje: 1 }])).toThrow('no pertenecen')
+  })
+
+  it('admite un decimal con punto y rechaza dos decimales o coma al ingresar o guardar', () => {
+    expect(isValidScoreInput('1.5', 2)).toBe(true)
+    expect(isValidScoreInput('1.', 2)).toBe(true)
+    expect(isValidScoreInput('1,5', 2)).toBe(false)
+    expect(isValidScoreInput('1.25', 2)).toBe(false)
+    expect(isValidScoreInput('2.5', 2)).toBe(false)
+    const corrected = normalizeCorrection(questions, [
+      { idPregunta: 1, puntaje: '1.5' },
+      { idPregunta: 2, puntaje: '7.2' },
+    ], true)
+    expect(corrected.map((item) => item.puntaje)).toEqual([1.5, 7.2])
+    expect(correctionTotal(corrected)).toBe(8.7)
+    expect(correctionTotal([{ puntaje: 0.1 }, { puntaje: 0.2 }])).toBe(0.3)
+    expect(() => normalizeCorrection(questions, [{ idPregunta: 1, puntaje: '1,5' }])).toThrow('entre 0 y 2')
+    expect(() => normalizeCorrection(questions, [{ idPregunta: 1, puntaje: '1.25' }])).toThrow('hasta un decimal')
+    expect(() => normalizeCorrection(questions, [{ idPregunta: 1, puntaje: 1.25 }])).toThrow('hasta un decimal')
   })
 
   it('clasifica la nota con los umbrales indicados', () => {
@@ -50,8 +69,21 @@ describe('estado de entregas para corrección', () => {
   })
 })
 
+describe('respuesta esperada durante la corrección', () => {
+  it('conserva la referencia privada al guardar avances y la elimina al cerrar sesión', () => {
+    const store = configureStore({ reducer: { corrections: reducer } })
+    const expectedAnswers = [{ nombreTema: 'Tema A', preguntas: [{ idPregunta: 1, respuestaEsperada: 'Respuesta modelo' }] }]
+    store.dispatch(loadCorrectionDelivery.pending('load-expected', { deliveryId: 'entrega-1' }))
+    store.dispatch(loadCorrectionDelivery.fulfilled({ exam: { id: 'exam-1' }, delivery: { id: 'entrega-1' }, expectedAnswers }, 'load-expected', { deliveryId: 'entrega-1' }))
+    store.dispatch(saveCorrectionDraft.fulfilled({ id: 'entrega-1', examenId: 'exam-1', estadoCorreccion: 'pendiente' }, 'save-expected', {}))
+    expect(selectCorrectionExpectedAnswers(store.getState())).toEqual(expectedAnswers)
+    store.dispatch(sessionCleared())
+    expect(selectCorrectionExpectedAnswers(store.getState())).toEqual([])
+  })
+})
+
 describe('exámenes disponibles para corregir', () => {
-  it('incluye finalizados archivados y excluye cursos ajenos y exámenes en curso', () => {
+  it('muestra finalizados activos y excluye archivados, cursos ajenos y exámenes en curso', () => {
     const state = { teacherExams: {
       exams: [
         { id: 'uno', cursoCodigo: 'CURSO-A', estado: 'finalizado' },
@@ -61,7 +93,7 @@ describe('exámenes disponibles para corregir', () => {
       ],
       courses: [{ idCurso: 'CURSO-A' }],
     } }
-    expect(selectFinalizedTeacherExams(state, '', Date.now()).map((exam) => exam.id)).toEqual(['uno', 'dos'])
+    expect(selectFinalizedTeacherExams(state, '', Date.now()).map((exam) => exam.id)).toEqual(['uno'])
     expect(selectFinalizedTeacherExams(state, 'CURSO-B', Date.now())).toEqual([])
   })
 })

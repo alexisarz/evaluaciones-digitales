@@ -1,11 +1,12 @@
 import { collection, getDoc, getDocs, doc, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { sortNewestFirst } from '../shared/sortByCreation'
 
 const coursesCollection = collection(db, 'cursos')
 
 export async function obtenerCursosPorProfesor(legajoProfe) {
   const snapshot = await getDocs(query(coursesCollection, where('legajoProfe', '==', Number(legajoProfe))))
-  return snapshot.docs.map((course) => ({ id: course.id, ...course.data() }))
+  return sortNewestFirst(snapshot.docs.map((course) => ({ id: course.id, ...course.data() })))
 }
 
 /** Los códigos viven en users.cursosActivos; no se usa una colección inscripciones. */
@@ -14,5 +15,5 @@ export async function obtenerCursosPorCodigos(courseCodes = []) {
     const course = await getDoc(doc(db, 'cursos', code))
     return course.exists() ? { id: course.id, ...course.data() } : null
   }))
-  return courses.filter(Boolean)
+  return sortNewestFirst(courses.filter(Boolean))
 }

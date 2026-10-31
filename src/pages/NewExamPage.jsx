@@ -9,13 +9,15 @@ import { useAuth } from '../features/auth/useAuth'
 import { obtenerExamenPorId } from '../services/examsService'
 import { saveTeacherExam } from '../features/teacherExams/teacherExamsSlice'
 import { previewCleared, previewOpened, selectExamPreviewDraft } from '../features/teacherExams/examPreviewSlice'
-import { hasTenPointsPerTopic, isValidQuestionScore } from '../features/teacherExams/examRules'
+import { hasTenPointsPerTopic, isValidQuestionScore, savedTopicScore } from '../features/teacherExams/examRules'
 import { obtenerCursosPorProfesor } from '../services/coursesService'
 import { isExamEditable } from '../utils/examWindow'
+import ExamParticipantsPanel from '../features/teacherExams/ExamParticipantsPanel'
+import ExamQuestionEditor from '../features/teacherExams/ExamQuestionEditor'
 
 const topicColors = ['#1d4ed8', '#0f766e', '#9333ea', '#c2410c', '#be123c', '#0369a1']
 const initialTopic = { nombreTema: 'Tema A', color: topicColors[0], preguntas: [] }
-const emptyQuestion = { consigna: '', tipo: 'Texto', puntaje: '1' }
+const emptyQuestion = { consigna: '', respuestaEsperada: '', tipo: 'Texto', puntaje: '1' }
 const blankForm = { nombre: '', cursoCodigo: '', materia: '', fecha: '', hora: '19:00', duracionMinutos: 120, toleranciaMinutos: '15', tipoAsignacion: 'Automático (alternado por legajo)', temas: [initialTopic], estado: 'borrador' }
 const toDateValue = (timestamp) => { const value = timestamp?.toDate?.(); if (!value) return ''; return new Date(value.getTime() - value.getTimezoneOffset() * 60000).toISOString().slice(0, 10) }
 const toTimeValue = (timestamp) => timestamp?.toDate?.().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) ?? ''
@@ -35,6 +37,7 @@ export default function NewExamPage() {
   const [question, setQuestion] = useState(() => restoredDraft?.question ?? emptyQuestion)
   const [editingQuestionIndex, setEditingQuestionIndex] = useState(() => restoredDraft?.editingQuestionIndex ?? null)
   const [scoreDialogOpen, setScoreDialogOpen] = useState(false)
+  const [invalidTopicName, setInvalidTopicName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [loadError, setLoadError] = useState('')
@@ -42,9 +45,10 @@ export default function NewExamPage() {
   const [courses, setCourses] = useState([])
   const [loadingCourses, setLoadingCourses] = useState(true)
   const [originalExam, setOriginalExam] = useState(null)
+  const [activePanel, setActivePanel] = useState('editor')
   const [now, setNow] = useState(() => Date.now())
   const currentTopic = form.temas[activeTopic]
-  const total = currentTopic?.preguntas.reduce((sum, item) => sum + Number(item.puntaje), 0) ?? 0
+  const total = savedTopicScore(currentTopic)
   const hasQuestions = form.temas.some((topic) => topic.preguntas.length > 0)
   const change = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   const changeQuestionScore = (value) => {
@@ -75,7 +79,7 @@ export default function NewExamPage() {
   useEffect(() => {
     if (!examId) return
     let mounted = true
-    obtenerExamenPorId(examId).then((exam) => {
+    obtenerExamenPorId(examId, user.legajo).then((exam) => {
       if (!mounted) return
       if (exam.legajoProfe !== Number(user.legajo)) throw new Error('No tenés permiso para editar este examen.')
       if (exam.archivado || !isExamEditable(exam)) throw new Error('Este examen ya está en curso, finalizado o archivado y no se puede editar.')
@@ -111,7 +115,7 @@ export default function NewExamPage() {
   const changeTopicColor = (color) => setForm((current) => ({ ...current, temas: current.temas.map((topic, index) => index === activeTopic ? { ...topic, color } : topic) }))
   const editQuestion = (index) => {
     const selected = currentTopic.preguntas[index]
-    setQuestion({ consigna: selected.consigna, tipo: selected.tipo, puntaje: String(selected.puntaje) })
+    setQuestion({ consigna: selected.consigna, respuestaEsperada: selected.respuestaEsperada ?? '', tipo: selected.tipo, puntaje: String(selected.puntaje) })
     setEditingQuestionIndex(index)
     setError('')
   }
@@ -121,7 +125,7 @@ export default function NewExamPage() {
     setError('')
     setForm((current) => ({ ...current, temas: current.temas.map((topic, index) => {
       if (index !== activeTopic) return topic
-      const updatedQuestion = { idPregunta: editingQuestionIndex === null ? topic.preguntas.length + 1 : topic.preguntas[editingQuestionIndex].idPregunta, consigna: question.consigna.trim(), tipo: question.tipo, puntaje: Number(question.puntaje) }
+      const updatedQuestion = { idPregunta: editingQuestionIndex === null ? topic.preguntas.length + 1 : topic.preguntas[editingQuestionIndex].idPregunta, consigna: question.consigna.trim(), respuestaEsperada: typeof question.respuestaEsperada === 'string' ? question.respuestaEsperada.trim() : question.respuestaEsperada, tipo: question.tipo, puntaje: Number(question.puntaje) }
       return { ...topic, preguntas: editingQuestionIndex === null ? [...topic.preguntas, updatedQuestion] : topic.preguntas.map((item, questionIndex) => questionIndex === editingQuestionIndex ? updatedQuestion : item) }
     }) }))
     resetQuestionEditor()
@@ -138,11 +142,18 @@ export default function NewExamPage() {
 
   async function crearExamen(datosExamen) { return dispatch(saveTeacherExam({ datosExamen })).unwrap() }
   const save = async (estado) => {
-    if (!formRef.current.reportValidity()) return
+    // Sólo los campos con nombre pertenecen al examen. El editor de preguntas es un borrador aparte.
+    const examFields = Array.from(formRef.current.elements).filter((field) => field.name)
+    if (examFields.some((field) => !field.reportValidity())) return
     if (estado !== 'borrador') {
       const start = new Date(`${form.fecha}T${form.hora}`).getTime()
       if (!Number.isFinite(start) || start <= Date.now()) return setError('La fecha y hora deben ser futuras.')
-      if (!hasTenPointsPerTopic(form.temas)) return setScoreDialogOpen(true)
+      if (!hasTenPointsPerTopic(form.temas)) {
+        const invalidIndex = form.temas.findIndex((topic) => !hasTenPointsPerTopic([topic]))
+        setInvalidTopicName(form.temas[invalidIndex]?.nombreTema ?? '')
+        if (invalidIndex >= 0) setActiveTopic(invalidIndex)
+        return setScoreDialogOpen(true)
+      }
     }
     const topicColorSet = new Set(form.temas.map((topic) => topic.color))
     if (topicColorSet.size !== form.temas.length) return setError('Cada tema debe tener un color diferente.')
@@ -158,11 +169,12 @@ export default function NewExamPage() {
 
   if (loadingExam) return <TeacherShell><p className="table-message">Cargando examen…</p></TeacherShell>
   if (examId && loadError) return <TeacherShell><p className="error table-message">{loadError}</p><Link to="/profesor/misExamenes">← Volver a mis exámenes</Link></TeacherShell>
-  if (examId && originalExam && !isExamEditable(originalExam, now)) return <TeacherShell><p className="error table-message">Este examen ya está en curso o finalizado y no se puede editar.</p><Link to="/profesor/misExamenes">← Volver a mis exámenes</Link></TeacherShell>
+  if (examId && originalExam && !isExamEditable(originalExam, now)) return <TeacherShell><p className="error table-message">Este examen ya está en curso o finalizado y no se puede editar.</p><Link to={`/profesor/corregirExamen?id=${encodeURIComponent(examId)}`}>Ver alumnos y estado de entrega</Link></TeacherShell>
 
   return <TeacherShell>
     <section className="new-exam-header"><div><Link to="/profesor/misExamenes">← Mis exámenes</Link><h1>{examId ? 'Editar examen' : 'Nuevo examen'}</h1></div><span className={`status-pill ${form.estado}`}>{({ borrador: 'Borrador', programado: 'Programado', reprogramado: 'Reprogramado' })[form.estado] ?? form.estado}</span></section>
-    <form ref={formRef} className="exam-form" onSubmit={(event) => event.preventDefault()}>
+    {examId && <nav className="exam-panel-tabs" aria-label="Secciones del examen"><button type="button" className={activePanel === 'editor' ? 'active' : ''} aria-current={activePanel === 'editor' ? 'page' : undefined} onClick={() => setActivePanel('editor')}>Edición</button><button type="button" className={activePanel === 'alumnos' ? 'active' : ''} aria-current={activePanel === 'alumnos' ? 'page' : undefined} onClick={() => setActivePanel('alumnos')}>Alumnos y entregas</button></nav>}
+    <form ref={formRef} className="exam-form" hidden={activePanel !== 'editor'} onSubmit={(event) => event.preventDefault()}>
       <FormSection title="1 · Datos generales"><div className="form-grid">
         <Field label="Nombre del examen"><input name="nombre" value={form.nombre} onChange={change} required /></Field>
         <Field label="Curso"><select name="cursoCodigo" value={form.cursoCodigo} onChange={changeCourse} required disabled={loadingCourses}><option value="">{loadingCourses ? 'Cargando cursos…' : 'Seleccioná un curso'}</option>{courses.map((course) => <option key={course.id} value={course.idCurso ?? course.id}>{course.idCurso ?? course.id} · {course.materia}</option>)}</select></Field>
@@ -174,10 +186,11 @@ export default function NewExamPage() {
         <Field label="Tolerancia de ingreso (min)"><input type="number" min="0" name="toleranciaMinutos" value={form.toleranciaMinutos} onChange={change} required /></Field>
       </div></FormSection>
       <FormSection title="2 · Temas y asignación"><div className="topic-tabs">{form.temas.map((topic, index) => <button key={`${topic.nombreTema}-${index}`} type="button" className={index === activeTopic ? 'active' : ''} style={{ backgroundColor: topic.color, borderColor: topic.color }} aria-pressed={index === activeTopic} onClick={() => { setActiveTopic(index); resetQuestionEditor() }}>{topic.nombreTema}</button>)}<button type="button" className="add-topic" onClick={addTopic}>+ Agregar tema</button>{currentTopic && <button type="button" className="remove-topic" onClick={removeActiveTopic}>Eliminar tema</button>}</div>{currentTopic && <Field label={`Color de ${currentTopic.nombreTema}`}><input className="topic-color" type="color" value={currentTopic.color} onChange={(event) => changeTopicColor(event.target.value)} /></Field>}<Field label="Cómo se asigna el tema a cada alumno"><select name="tipoAsignacion" value={form.tipoAsignacion} onChange={change}><option>Automático (alternado por legajo)</option><option>Manual</option><option>Aleatorio</option></select></Field></FormSection>
-      {currentTopic ? <FormSection title={`3 · Preguntas del ${currentTopic.nombreTema}`} aside={`Total: ${total} pts`}><div className="question-list">{currentTopic.preguntas.map((item, index) => <article key={item.idPregunta} className="question-row"><span>{String(index + 1).padStart(2, '0')}</span><p>{item.consigna}</p><em>{item.tipo}</em><strong>{item.puntaje} pts</strong><button type="button" className="edit-question" onClick={() => editQuestion(index)}>Editar</button><button type="button" onClick={() => removeQuestion(index)}>Quitar</button></article>)}</div><div className="question-builder"><Field label="Consigna"><input value={question.consigna} onChange={(event) => setQuestion((current) => ({ ...current, consigna: event.target.value }))} placeholder="Escribí la consigna" /></Field><Field label="Tipo de pregunta"><select value={question.tipo} onChange={(event) => setQuestion((current) => ({ ...current, tipo: event.target.value }))}><option>Texto</option><option>Tabla de decisión</option><option>Árbol de decisión</option><option>Prueba unitaria</option></select></Field><Field label="Puntaje"><input type="number" min="1" max="10" step="1" value={question.puntaje} onChange={(event) => changeQuestionScore(event.target.value)} /></Field><button type="button" className="secondary-action" onClick={addQuestion}>{editingQuestionIndex === null ? '+ Agregar pregunta' : 'Guardar pregunta'}</button>{editingQuestionIndex !== null && <button type="button" className="secondary-action" onClick={resetQuestionEditor}>Cancelar edición</button>}</div></FormSection> : <p className="empty-topics">No hay temas. Agregá uno para incluir preguntas.</p>}
+      {currentTopic ? <FormSection title={`3 · Preguntas del ${currentTopic.nombreTema}`} aside={`Total: ${total} pts`}><div className="question-list">{currentTopic.preguntas.map((item, index) => <article key={item.idPregunta} className="question-row"><span>{String(index + 1).padStart(2, '0')}</span><p>{item.consigna}</p><em>{item.tipo}</em><strong>{item.puntaje} pts</strong><button type="button" className="edit-question" onClick={() => editQuestion(index)}>Editar</button><button type="button" onClick={() => removeQuestion(index)}>Quitar</button></article>)}</div><ExamQuestionEditor question={question} onChange={setQuestion} onScoreChange={changeQuestionScore} onSave={addQuestion} editing={editingQuestionIndex !== null} onCancel={resetQuestionEditor} /></FormSection> : <p className="empty-topics">No hay temas. Agregá uno para incluir preguntas.</p>}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="form-actions"><button type="button" className="secondary-action" onClick={openPreview} disabled={!hasQuestions || saving}>Vista previa como alumno</button>{examId ? <><button type="button" className="primary-action button-action" onClick={() => save(form.estado)} disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button>{form.estado === 'borrador' && <button type="button" className="primary-action button-action" onClick={() => save('programado')} disabled={saving}>Publicar examen</button>}</> : <><button type="button" className="secondary-action" onClick={() => save('borrador')} disabled={saving}>Guardar borrador</button><button type="button" className="primary-action button-action" onClick={() => save('programado')} disabled={saving}>{saving ? 'Guardando…' : 'Publicar examen'}</button></>}</div>
     </form>
-    {scoreDialogOpen && <ConfirmDialog titleId="exam-score-dialog-title" title="Puntaje del examen" actions={<button type="button" className="primary-action button-action" onClick={() => setScoreDialogOpen(false)}>Aceptar</button>}><p>La sumatoria de puntaje de las preguntas debe ser igual a 10</p></ConfirmDialog>}
+    {examId && activePanel === 'alumnos' && <ExamParticipantsPanel examId={examId} legajoProfe={user.legajo} />}
+    {scoreDialogOpen && <ConfirmDialog titleId="exam-score-dialog-title" title="Puntaje del examen" actions={<button type="button" className="primary-action button-action" onClick={() => setScoreDialogOpen(false)}>Aceptar</button>}><p>La sumatoria de puntaje de las preguntas debe ser igual a 10</p>{invalidTopicName && <p>Revisá {invalidTopicName}.</p>}</ConfirmDialog>}
   </TeacherShell>
 }

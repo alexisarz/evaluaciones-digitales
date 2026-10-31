@@ -4,8 +4,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import TeacherShell from '../components/TeacherShell'
 import ConfirmDialog from '../shared/components/ConfirmDialog'
 import { useAuth } from '../features/auth/useAuth'
-import { correctionTone, correctionTotal, normalizeCorrection } from '../features/corrections/correctionRules'
-import { finishCorrection, loadCorrectionDelivery, saveCorrectionDraft, selectCorrectionDelivery, selectCorrectionDetailError, selectCorrectionDetailLoading } from '../features/corrections/correctionsSlice'
+import { correctionTone, correctionTotal, isValidScoreInput, normalizeCorrection } from '../features/corrections/correctionRules'
+import { finishCorrection, loadCorrectionDelivery, saveCorrectionDraft, selectCorrectionDelivery, selectCorrectionDetailError, selectCorrectionDetailLoading, selectCorrectionExpectedAnswers } from '../features/corrections/correctionsSlice'
+import { expectedAnswerFor } from '../features/teacherExams/expectedAnswers'
+import QuestionResponse from '../shared/components/QuestionResponse'
 
 const entriesFromDelivery = (delivery) => (delivery.preguntas ?? []).map((question) => {
   const saved = delivery.correccion?.find((entry) => Number(entry.idPregunta) === Number(question.idPregunta))
@@ -19,6 +21,7 @@ export default function CorrectionDetailPage() {
   const [params] = useSearchParams()
   const deliveryId = params.get('id')
   const delivery = useSelector(selectCorrectionDelivery)
+  const expectedAnswers = useSelector(selectCorrectionExpectedAnswers)
   const loading = useSelector(selectCorrectionDetailLoading)
   const loadError = useSelector(selectCorrectionDetailError)
   const [correction, setCorrection] = useState([])
@@ -93,9 +96,7 @@ export default function CorrectionDetailPage() {
   }, [deliveryId, enqueueSave])
 
   const changeEntry = (question, field, value) => {
-    if (field === 'puntaje' && value !== '') {
-      if (!/^\d+(?:\.\d*)?$/.test(value) || Number(value) > Number(question.puntajeMaximo)) return
-    }
+    if (field === 'puntaje' && !isValidScoreInput(value, question.puntajeMaximo)) return
     const next = latestCorrection.current.map((entry) => Number(entry.idPregunta) === Number(question.idPregunta) ? { ...entry, [field]: value } : entry)
     latestCorrection.current = next
     editVersion.current += 1
@@ -147,16 +148,18 @@ export default function CorrectionDetailPage() {
     {loading && <p className="table-message">Cargando entrega…</p>}
     {loadError && <p className="error" role="alert">{loadError}</p>}
     {!loading && !loadError && currentDelivery && <div className="correction-detail">
-      <section className="form-section correction-student"><div><h2>{currentDelivery.nombreAlumno} {currentDelivery.apellidoAlumno}</h2><p>Legajo {currentDelivery.legajoAlumno} · {currentDelivery.nombreExamen} · {currentDelivery.materia}</p></div><span className="correction-topic" style={{ backgroundColor: currentDelivery.tema?.color ?? '#244a87' }}>{currentDelivery.tema?.nombreTema ?? 'Sin tema'}</span></section>
+      <section className="form-section correction-student"><div><h2>{currentDelivery.nombreAlumno} {currentDelivery.apellidoAlumno}</h2><p>Legajo {currentDelivery.legajoAlumno} · {currentDelivery.nombreExamen} · {currentDelivery.materia}</p>{currentDelivery.motivoEntrega === 'ausente' && <p className="correction-absence-label">Alumno ausente · entrega en blanco para corregir</p>}</div><span className="correction-topic" style={{ backgroundColor: currentDelivery.tema?.color ?? '#244a87' }}>{currentDelivery.tema?.nombreTema ?? 'Sin tema'}</span></section>
       {currentDelivery.incidentes?.length > 0 && <section className="correction-incidents" role="note"><strong>Incidencias registradas durante este examen</strong><ul>{currentDelivery.incidentes.map((incident, index) => <li key={`${incident}-${index}`}>{incident}</li>)}</ul></section>}
       {(currentDelivery.preguntas ?? []).map((question, index) => {
         const answer = currentDelivery.respuestas?.find((item) => Number(item.idPregunta) === Number(question.idPregunta))
         const entry = correction.find((item) => Number(item.idPregunta) === Number(question.idPregunta))
+        const expected = expectedAnswerFor(expectedAnswers, currentDelivery.tema?.nombreTema, question.idPregunta)
         return <section className="form-section correction-question" key={question.idPregunta}>
           <div className="correction-question-heading"><span>Pregunta {index + 1} de {currentDelivery.preguntas.length}</span><span>{question.tipo} · máximo {question.puntajeMaximo} pts</span></div>
           <h2>{question.consigna}</h2>
-          <div className="correction-answer"><strong>Respuesta del alumno</strong><p>{answer?.respuestaTexto?.trim() || 'Sin respuesta'}</p></div>
-          <div className="correction-fields"><label>Puntaje (0 a {question.puntajeMaximo})<input type="number" min="0" max={question.puntajeMaximo} step="any" value={entry?.puntaje ?? ''} onChange={(event) => changeEntry(question, 'puntaje', event.target.value)} disabled={corrected || saving} placeholder="Sin puntuar" /></label><label>Comentarios de corrección<textarea value={entry?.comentario ?? ''} onChange={(event) => changeEntry(question, 'comentario', event.target.value)} disabled={corrected || saving} placeholder="Escribí un comentario para esta pregunta…" /></label></div>
+          <div className="correction-answer"><strong>Respuesta del alumno</strong><QuestionResponse type={question.tipo} value={answer?.respuestaEstructurada ?? answer?.respuestaTexto} /></div>
+          <div className="correction-expected-answer"><strong>Respuesta esperada</strong><QuestionResponse type={question.tipo} value={expected} emptyLabel="No se cargó una respuesta esperada para esta pregunta." /></div>
+          <div className="correction-fields"><label>Puntaje (0 a {question.puntajeMaximo})<input type="text" inputMode="decimal" value={entry?.puntaje ?? ''} onChange={(event) => changeEntry(question, 'puntaje', event.target.value)} disabled={corrected || saving} placeholder="Sin puntuar" aria-label={`Puntaje de la pregunta ${index + 1}; usá punto y un solo decimal`} /><small>Usá punto y hasta un decimal (ej.: 1.5).</small></label><label>Comentarios de corrección<textarea value={entry?.comentario ?? ''} onChange={(event) => changeEntry(question, 'comentario', event.target.value)} disabled={corrected || saving} placeholder="Escribí un comentario para esta pregunta…" /></label></div>
         </section>
       })}
       {corrected && <p className="correction-final-grade">Nota final: {currentDelivery.nota} / {(currentDelivery.preguntas ?? []).reduce((sum, question) => sum + Number(question.puntajeMaximo), 0)}</p>}

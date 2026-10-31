@@ -44,8 +44,12 @@
 .admin-form-card > p { color: #68758b; }
 .admin-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .admin-form-grid label { display: grid; align-content: start; gap: 8px; font-size: 14px; font-weight: 800; }
+.admin-course-create-grid > label:nth-child(-n+2) { display: flex; flex-direction: column; }
+.admin-course-create-grid > label:nth-child(2) { justify-content: flex-end; }
 .admin-form-grid input, .admin-form-grid select { width: 100%; min-height: 48px; padding: 10px 12px; color: #202b3e; background: #fff; border: 1px solid #9dacc2; border-radius: 9px; }
 .admin-form-grid small { color: #68758b; font-weight: 500; }
+.admin-form-grid .admin-course-code-hint { display: block; padding: 11px 13px; border-left: 4px solid #3264ae; border-radius: 8px; color: #244a87; background: #e7eefb; font-size: 13px; font-weight: 500; line-height: 1.55; overflow-wrap: anywhere; }
+.admin-course-code-hint strong { font-weight: 800; }
 .admin-form-note { margin: 16px 0 0; color: #68758b; line-height: 1.5; }
 .admin-course-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .admin-course-options label { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #d7dfeb; border-radius: 9px; cursor: pointer; }

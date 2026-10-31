@@ -15,7 +15,7 @@ export const saveCorrectionDraft = createAsyncThunk('corrections/saveDraft', asy
 export const finishCorrection = createAsyncThunk('corrections/finish', async ({ deliveryId, legajoProfe, correction }) =>
   serializeFirestore(await finalizarCorreccion(deliveryId, legajoProfe, correction)))
 
-const initialState = { exam: null, deliveries: [], delivery: null, listLoading: false, detailLoading: false, listError: '', detailError: '', listRequestId: null, detailRequestId: null }
+const initialState = { exam: null, deliveries: [], delivery: null, expectedAnswers: [], listLoading: false, detailLoading: false, listError: '', detailError: '', listRequestId: null, detailRequestId: null }
 
 const upsertDelivery = (state, delivery) => {
   state.delivery = delivery
@@ -39,10 +39,10 @@ const correctionsSlice = createSlice({
         state.listLoading = false; state.listRequestId = null
         if (!action.meta.aborted) state.listError = action.error.message || 'No se pudieron cargar las entregas.'
       })
-      .addCase(loadCorrectionDelivery.pending, (state, action) => { state.detailLoading = true; state.detailError = ''; state.detailRequestId = action.meta.requestId; state.delivery = null })
+      .addCase(loadCorrectionDelivery.pending, (state, action) => { state.detailLoading = true; state.detailError = ''; state.detailRequestId = action.meta.requestId; state.delivery = null; state.expectedAnswers = [] })
       .addCase(loadCorrectionDelivery.fulfilled, (state, action) => {
         if (state.detailRequestId !== action.meta.requestId) return
-        state.exam = action.payload.exam; state.delivery = action.payload.delivery; state.detailLoading = false; state.detailRequestId = null
+        state.exam = action.payload.exam; state.delivery = action.payload.delivery; state.expectedAnswers = action.payload.expectedAnswers; state.detailLoading = false; state.detailRequestId = null
       })
       .addCase(loadCorrectionDelivery.rejected, (state, action) => {
         if (state.detailRequestId !== action.meta.requestId) return
@@ -59,6 +59,7 @@ const correctionsSlice = createSlice({
 export const selectCorrectionExam = (state) => state.corrections.exam
 export const selectCorrectionDeliveries = (state) => state.corrections.deliveries
 export const selectCorrectionDelivery = (state) => state.corrections.delivery
+export const selectCorrectionExpectedAnswers = (state) => state.corrections.expectedAnswers
 export const selectCorrectionListLoading = (state) => state.corrections.listLoading
 export const selectCorrectionDetailLoading = (state) => state.corrections.detailLoading
 export const selectCorrectionListError = (state) => state.corrections.listError

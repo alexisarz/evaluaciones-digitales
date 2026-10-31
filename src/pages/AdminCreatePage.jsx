@@ -5,6 +5,8 @@ import AdminShell from '../components/AdminShell'
 import { db } from '../firebase'
 import { crearCursoAdmin, crearUsuarioAdmin } from '../services/adminService'
 import DigitsOnlyInput from '../shared/components/DigitsOnlyInput'
+import { sanitizeCourseCode } from '../features/admin/adminRules'
+import { sortNewestFirst } from '../shared/sortByCreation'
 
 const details = {
   alumno: { title: 'Alta de alumno', section: 'alumnos' },
@@ -30,8 +32,8 @@ export default function AdminCreatePage({ type }) {
     const source = type === 'alumno' ? 'cursos' : 'users'
     getDocs(collection(db, source)).then((snapshot) => {
       if (!mounted) return
-      if (type === 'alumno') setCourses(snapshot.docs.map((item) => ({ ...item.data(), id: item.id })).sort((a, b) => (a.idCurso ?? a.id).localeCompare(b.idCurso ?? b.id)))
-      else setProfessors(snapshot.docs.map((item) => ({ ...item.data(), id: item.id })).filter((user) => user.rol === 'profesor' && user.activo === true))
+      if (type === 'alumno') setCourses(sortNewestFirst(snapshot.docs.map((item) => ({ ...item.data(), id: item.id }))))
+      else setProfessors(sortNewestFirst(snapshot.docs.map((item) => ({ ...item.data(), id: item.id })).filter((user) => user.rol === 'profesor' && user.activo === true)))
     }).catch(() => { if (mounted) setError(`No se pudo cargar la colección ${source}. Revisá los permisos de Firestore.`) })
       .finally(() => { if (mounted) setLoadingOptions(false) })
     return () => { mounted = false }
@@ -78,11 +80,11 @@ export default function AdminCreatePage({ type }) {
     <div className="admin-create-heading"><Link to={`/admin/panel?seccion=${section}`}>← Volver a {section}</Link><h1>{title}</h1><p>{type === 'curso' ? 'Creá un curso y asignale su profesor responsable.' : 'El usuario definirá su contraseña en el primer ingreso.'}</p></div>
     <form className="admin-create-form" onSubmit={submit}>
       {type === 'curso' ? <>
-        <section className="admin-form-card"><h2>Datos de la materia</h2><div className="admin-form-grid">
-          <label>Código del curso<input name="idCurso" value={form.idCurso} onChange={change} required placeholder="2A-TEST" /></label>
-          <label>Nombre de la materia<input name="materia" value={form.materia} onChange={change} required placeholder="Testing de aplicaciones" /></label>
+        <section className="admin-form-card"><h2>Datos de la materia</h2><div className="admin-form-grid admin-course-create-grid">
+          <label>Código del curso<span className="admin-course-code-hint" id="course-code-hint">Solo letras, números y guiones (-). Formato: <strong>CUATRIMESTRE-MATERIA-DIA-TURNO</strong><br />Ejemplo: <strong>2C-MATE-LUN-NOC</strong></span><input name="idCurso" value={form.idCurso} onChange={(event) => setForm((current) => ({ ...current, idCurso: sanitizeCourseCode(event.target.value) }))} aria-describedby="course-code-hint" required /></label>
+          <label>Nombre de la materia<input name="materia" value={form.materia} onChange={change} required /></label>
           <label>Profesor responsable<select name="legajoProfe" value={form.legajoProfe} onChange={change} required disabled={loadingOptions}><option value="">Seleccionar profesor</option>{professors.map((professor) => <option key={professor.id} value={professor.legajo ?? professor.id}>{professor.legajo ?? professor.id} · {professor.nombre} {professor.apellido}</option>)}</select></label>
-          <label>Comisiones<input name="comisiones" value={form.comisiones} onChange={change} required placeholder="Comisión A, Comisión B" /><small>Separá las comisiones con coma, punto y coma o |.</small></label>
+          <label>Comisiones<input name="comisiones" value={form.comisiones} onChange={change} required /><small>Separá las comisiones con coma, punto y coma o |.</small></label>
         </div>{!loadingOptions && !professors.length && <p className="admin-form-note">Primero necesitás dar de alta un profesor activo.</p>}</section>
       </> : <>
         <section className="admin-form-card"><h2>Datos personales</h2><div className="admin-form-grid">

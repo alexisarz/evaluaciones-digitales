@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const StudentExamsPage = lazy(() => import('./pages/StudentExamsPage'))
+const StudentCorrectionPage = lazy(() => import('./pages/StudentCorrectionPage'))
 const TakeExamPage = lazy(() => import('./pages/TakeExamPage'))
 const ExamResultPage = lazy(() => import('./pages/ExamResultPage'))
 const TeacherExamsPage = lazy(() => import('./pages/TeacherExamsPage'))
@@ -13,6 +14,8 @@ const ExamPreviewPage = lazy(() => import('./pages/ExamPreviewPage'))
 const CorrectionsPage = lazy(() => import('./pages/CorrectionsPage'))
 const CorrectionAttemptsPage = lazy(() => import('./pages/CorrectionAttemptsPage'))
 const CorrectionDetailPage = lazy(() => import('./pages/CorrectionDetailPage'))
+const TeacherCoursesPage = lazy(() => import('./pages/TeacherCoursesPage'))
+const TeacherCourseDetailPage = lazy(() => import('./pages/TeacherCourseDetailPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminCreatePage = lazy(() => import('./pages/AdminCreatePage'))
 const AdminEditPage = lazy(() => import('./pages/AdminEditPage'))
@@ -26,6 +29,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute allowedRoles={['alumno']} />}>
             <Route path="/alumno/misExamenes" element={<StudentExamsPage />} />
+            <Route path="/alumno/verCorreccion" element={<StudentCorrectionPage />} />
             <Route path="/alumno/realizarExamen" element={<TakeExamPage />} />
             <Route path="/alumno/examenExistoso" element={<ExamResultPage />} />
             <Route path="/alumno/errorExamen" element={<ExamResultPage failed />} />
@@ -39,6 +43,8 @@ export default function App() {
             <Route path="/profesor/correcciones" element={<CorrectionsPage />} />
             <Route path="/profesor/corregirExamen" element={<CorrectionAttemptsPage />} />
             <Route path="/profesor/corregirExamen/examenAlumno" element={<CorrectionDetailPage />} />
+            <Route path="/profesor/misCursos" element={<TeacherCoursesPage />} />
+            <Route path="/profesor/misCursos/curso" element={<TeacherCourseDetailPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<Navigate to="/admin/panel" replace />} />

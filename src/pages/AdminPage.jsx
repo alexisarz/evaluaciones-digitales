@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link, useSearchParams } from 'react-router-dom'
 import AdminShell from '../components/AdminShell'
 import ConfirmDialog from '../shared/components/ConfirmDialog'
-import { selectAdminCoursesReady, selectAdminLoadError, selectAdminRows, selectAdminUsersReady, selectFilteredAdminRows, setAdminUserActive, subscribeAdminData } from '../features/admin/adminSlice'
+import { reconcileAdminCourseMemberships, selectAdminCoursesReady, selectAdminLoadError, selectAdminRows, selectAdminUsersReady, selectFilteredAdminRows, selectOrphanCourseAssignments, setAdminUserActive, subscribeAdminData } from '../features/admin/adminSlice'
 import { eliminarCursoAdmin, importarRegistrosAdmin } from '../services/adminService'
 import { parseCsv } from '../utils/parseCsv'
 
@@ -19,11 +19,13 @@ export default function AdminPage() {
   const section = settings[searchParams.get('seccion')] ? searchParams.get('seccion') : 'alumnos'
   const config = settings[section]
   const fileInput = useRef(null)
+  const reconciling = useRef(false)
   const [search, setSearch] = useState('')
   const [field, setField] = useState('all')
   const usersReady = useSelector(selectAdminUsersReady)
   const coursesReady = useSelector(selectAdminCoursesReady)
   const loadError = useSelector(selectAdminLoadError)
+  const orphanAssignments = useSelector(selectOrphanCourseAssignments)
   const rows = useSelector((state) => selectAdminRows(state, section))
   const filteredRows = useSelector((state) => selectFilteredAdminRows(state, section, search, field, config.fields))
   const [pendingCsv, setPendingCsv] = useState(null)
@@ -36,6 +38,20 @@ export default function AdminPage() {
   const [toggling, setToggling] = useState(false)
 
   useEffect(() => subscribeAdminData(dispatch), [dispatch])
+
+  useEffect(() => {
+    if (!usersReady || !coursesReady || loadError || !orphanAssignments.length || reconciling.current) return
+    reconciling.current = true
+    void dispatch(reconcileAdminCourseMemberships(orphanAssignments.map((item) => item.legajo))).unwrap()
+      .then(({ usersUpdated, codesRemoved, failures }) => {
+        const messages = []
+        if (codesRemoved) messages.push(`Se quitaron ${codesRemoved} asignaciones a cursos inexistentes de ${usersUpdated} usuario(s).`)
+        if (failures.length) messages.push(`No se pudieron revisar ${failures.length} usuario(s). Recargá el panel para reintentar.`)
+        if (messages.length) setActionMessage(messages.join(' '))
+      })
+      .catch((caught) => setActionMessage(caught.message || 'No se pudieron limpiar las asignaciones a cursos inexistentes.'))
+      .finally(() => { reconciling.current = false })
+  }, [dispatch, usersReady, coursesReady, loadError, orphanAssignments])
 
   useEffect(() => { setSearch(''); setField('all'); setActionMessage(''); setPendingCsv(null) }, [section])
 

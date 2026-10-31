@@ -2,10 +2,12 @@ import { collection, doc, getDoc, getDocs, query, runTransaction, serverTimestam
 import { db } from '../firebase'
 import { getEffectiveExamStatus } from '../utils/examWindow'
 import { correctionTotal, normalizeCorrection } from '../features/corrections/correctionRules'
+import { obtenerExamenPorId } from './examsService'
+import { sortNewestFirst } from '../shared/sortByCreation'
 
-const assertTeacherExam = (exam, legajoProfe) => {
+const assertTeacherExam = (exam, legajoProfe, requireFinished = true) => {
   if (!exam || Number(exam.legajoProfe) !== Number(legajoProfe)) throw new Error('No tenés permiso para corregir este examen.')
-  if (getEffectiveExamStatus(exam) !== 'finalizado') throw new Error('El examen todavía no está finalizado.')
+  if (requireFinished && getEffectiveExamStatus(exam) !== 'finalizado') throw new Error('El examen todavía no está finalizado.')
 }
 
 const assertAssignedCourse = (course, legajoProfe) => {
@@ -21,13 +23,13 @@ const assertDelivery = (delivery, examId, legajoProfe) => {
 export async function obtenerEntregasParaCorreccion(examId, legajoProfe) {
   const examSnapshot = await getDoc(doc(db, 'examenes', examId))
   const exam = examSnapshot.data()
-  assertTeacherExam(exam, legajoProfe)
+  assertTeacherExam(exam, legajoProfe, false)
   const courseSnapshot = await getDoc(doc(db, 'cursos', exam.cursoCodigo))
   assertAssignedCourse(courseSnapshot.data(), legajoProfe)
   const snapshot = await getDocs(query(collection(db, 'examenesEntregados'), where('examenId', '==', examId)))
-  const deliveries = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
-    .filter((item) => item.estadoEntrega === 'entregado' && Number(item.legajoProfe) === Number(legajoProfe))
-    .sort((a, b) => Number(a.legajoAlumno) - Number(b.legajoAlumno))
+  const deliveries = sortNewestFirst(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+    .filter((item) => item.estadoEntrega === 'entregado' && Number(item.legajoProfe) === Number(legajoProfe)),
+  ['fechaCreacion', 'fechaInicioAlumno', 'fechaRegistroAusencia', 'fechaEntrega'])
   return { exam: { id: examId, ...exam }, deliveries }
 }
 
@@ -41,7 +43,8 @@ export async function obtenerEntregaParaCorreccion(deliveryId, legajoProfe) {
   const courseSnapshot = await getDoc(doc(db, 'cursos', exam.cursoCodigo))
   assertAssignedCourse(courseSnapshot.data(), legajoProfe)
   assertDelivery(delivery, delivery.examenId, legajoProfe)
-  return { exam: { id: delivery.examenId, ...exam }, delivery }
+  const examWithAnswers = await obtenerExamenPorId(delivery.examenId, legajoProfe)
+  return { exam: examWithAnswers, delivery, expectedAnswers: examWithAnswers.temas ?? [] }
 }
 
 async function guardarCorreccion(deliveryId, legajoProfe, entries, finalizar) {

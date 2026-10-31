@@ -44,7 +44,7 @@ export default function ExamPreviewPage() {
     </nav>}
     <section className="exam-question-area">
       <div className="exam-question-meta"><span>Pregunta {question ? questionIndex + 1 : 0} de {questions.length}</span><span className="preview-note">Simulación sin guardado ni entrega</span></div>
-      {question ? <ExamQuestionContent question={question} answer={answers[answerKey] ?? ''} onAnswerChange={(event) => setAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} inputId="preview-answer" /> : <p className="notice">Este tema todavía no tiene preguntas. Elegí otro tema para revisarlo.</p>}
+      {question ? <ExamQuestionContent question={question} answer={answers[answerKey] ?? ''} onAnswerChange={(value) => setAnswers((current) => ({ ...current, [answerKey]: value }))} inputId="preview-answer" /> : <p className="notice">Este tema todavía no tiene preguntas. Elegí otro tema para revisarlo.</p>}
     </section>
     <footer className="exam-footer"><div className="exam-nav"><button type="button" className="secondary-action" onClick={() => setQuestionIndex((index) => index - 1)} disabled={questionIndex === 0}>← Anterior</button><button type="button" className="primary-action button-action" onClick={() => setQuestionIndex((index) => index + 1)} disabled={questionIndex >= questions.length - 1}>Siguiente →</button></div><button type="button" className="secondary-action preview-exit" onClick={exit}>Salir de vista previa</button></footer>
   </main>

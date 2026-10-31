@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
 import previewReducer, { previewCleared, previewOpened, selectExamPreviewDraft } from '../../src/features/teacherExams/examPreviewSlice'
-import { assertExamCanPublish, hasTenPointsPerTopic, isExamArchivable, isExamDeletable, isValidQuestionScore } from '../../src/features/teacherExams/examRules'
+import { assertExamCanPublish, countDeliveredAttempts, hasTenPointsPerTopic, isExamArchivable, isExamDeletable, isValidQuestionScore, savedTopicScore } from '../../src/features/teacherExams/examRules'
 import { selectVisibleTeacherExams } from '../../src/features/teacherExams/teacherExamsSlice'
 
 const futureExam = {
@@ -27,6 +27,17 @@ describe('reglas de exámenes', () => {
     expect(() => assertExamCanPublish(futureExam, now)).not.toThrow()
   })
 
+  it('ignora el puntaje de una pregunta todavía sin agregar al publicar', () => {
+    const form = {
+      ...futureExam,
+      temas: [{ nombreTema: 'Tema B', preguntas: [{ puntaje: 1 }, { puntaje: 9 }] }],
+      question: { consigna: '', puntaje: '1' },
+    }
+    expect(savedTopicScore(form.temas[0])).toBe(10)
+    expect(hasTenPointsPerTopic(form.temas)).toBe(true)
+    expect(() => assertExamCanPublish(form, now)).not.toThrow()
+  })
+
   it('rechaza publicaciones con fecha pasada', () => {
     expect(() => assertExamCanPublish(futureExam, Date.parse('2026-10-21T00:00:00Z'))).toThrow('La fecha y hora deben ser futuras.')
   })
@@ -44,6 +55,16 @@ describe('reglas de exámenes', () => {
     const state = { teacherExams: { exams: [{ id: 'visible', ...futureExam }, { id: 'archived', ...futureExam, archivado: true }] } }
     expect(selectVisibleTeacherExams(state, '', now, false).map((exam) => exam.id)).toEqual(['visible'])
     expect(selectVisibleTeacherExams(state, '', now, true).map((exam) => exam.id)).toEqual(['archived'])
+  })
+
+  it('cuenta sólo las entregas terminadas de cada examen', () => {
+    expect(countDeliveredAttempts([
+      { examenId: 'a', estadoEntrega: 'entregado' },
+      { examenId: 'a', estadoEntrega: 'entregado' },
+      { examenId: 'a', estadoEntrega: 'en_curso' },
+      { examenId: 'a', estadoEntrega: 'entregado', motivoEntrega: 'ausente' },
+      { examenId: 'b', estadoEntrega: 'entregado' },
+    ])).toEqual({ a: 2, b: 1 })
   })
 })
 

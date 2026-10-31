@@ -1,10 +1,11 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit'
 import { obtenerCursosPorCodigos } from '../../services/coursesService'
 import { obtenerExamenesPorCursos } from '../../services/examsService'
-import { obtenerIntentosAlumno } from '../../services/examAttemptService'
+import { escucharIntentosAlumno, obtenerCorreccionPublicadaAlumno, obtenerIntentosAlumno } from '../../services/examAttemptService'
 import { listarBorradoresLocales } from '../../services/localExamDraft'
 import { serializeFirestore } from '../../shared/serializeFirestore'
 import { logout, sessionCleared } from '../auth/authSlice'
+import { sortNewestFirst } from '../../shared/sortByCreation'
 
 export const loadStudentExams = createAsyncThunk('studentExams/load', async ({ legajo, cursosActivos }, { rejectWithValue }) => {
   try {
@@ -20,11 +21,16 @@ export const loadStudentExams = createAsyncThunk('studentExams/load', async ({ l
   }
 })
 
+export const loadPublishedStudentCorrection = createAsyncThunk('studentExams/loadPublishedCorrection',
+  async ({ examId, legajo }) => serializeFirestore(await obtenerCorreccionPublicadaAlumno(examId, legajo)))
+
 const studentExamsSlice = createSlice({
   name: 'studentExams',
-  initialState: { exams: [], courses: [], attempts: [], localDrafts: [], loading: true, error: '', requestId: null },
+  initialState: { exams: [], courses: [], attempts: [], localDrafts: [], loading: true, error: '', requestId: null,
+    review: { delivery: null, loading: false, error: '', requestId: null } },
   reducers: {
     localDraftRemoved: (state, action) => { state.localDrafts = state.localDrafts.filter((draft) => draft.id !== action.payload) },
+    studentAttemptsReceived: (state, action) => { state.attempts = action.payload },
     attemptUpserted: {
       reducer: (state, action) => {
         state.attempts = [...state.attempts.filter((attempt) => attempt.examenId !== action.payload.examenId), action.payload]
@@ -45,18 +51,36 @@ const studentExamsSlice = createSlice({
         if (action.meta.aborted) return
         state.localDrafts = action.payload ?? []; state.loading = false; state.error = 'No se pudieron cargar todos tus exámenes. Intentá nuevamente.'
       })
-      .addCase(sessionCleared, (state) => { state.exams = []; state.courses = []; state.attempts = []; state.localDrafts = []; state.loading = true; state.error = ''; state.requestId = null })
-      .addCase(logout.fulfilled, (state) => { state.exams = []; state.courses = []; state.attempts = []; state.localDrafts = []; state.loading = true; state.error = ''; state.requestId = null })
+      .addCase(loadPublishedStudentCorrection.pending, (state, action) => {
+        state.review = { delivery: null, loading: true, error: '', requestId: action.meta.requestId }
+      })
+      .addCase(loadPublishedStudentCorrection.fulfilled, (state, action) => {
+        if (state.review.requestId !== action.meta.requestId) return
+        state.review = { delivery: action.payload, loading: false, error: '', requestId: null }
+      })
+      .addCase(loadPublishedStudentCorrection.rejected, (state, action) => {
+        if (state.review.requestId !== action.meta.requestId) return
+        state.review = { delivery: null, loading: false, error: action.meta.aborted ? '' : action.error.message || 'No se pudo cargar la corrección.', requestId: null }
+      })
+      .addCase(sessionCleared, (state) => { state.exams = []; state.courses = []; state.attempts = []; state.localDrafts = []; state.loading = true; state.error = ''; state.requestId = null; state.review = { delivery: null, loading: false, error: '', requestId: null } })
+      .addCase(logout.fulfilled, (state) => { state.exams = []; state.courses = []; state.attempts = []; state.localDrafts = []; state.loading = true; state.error = ''; state.requestId = null; state.review = { delivery: null, loading: false, error: '', requestId: null } })
   },
 })
 
-export const { localDraftRemoved, attemptUpserted } = studentExamsSlice.actions
+export const { localDraftRemoved, studentAttemptsReceived, attemptUpserted } = studentExamsSlice.actions
+export const subscribeStudentAttempts = (dispatch, legajo, onError) =>
+  escucharIntentosAlumno(legajo,
+    (attempts) => dispatch(studentAttemptsReceived(serializeFirestore(attempts))),
+    onError)
 export const selectStudentExams = (state) => state.studentExams.exams
 export const selectStudentCourses = (state) => state.studentExams.courses
 export const selectStudentAttempts = (state) => state.studentExams.attempts
 export const selectStudentLocalDrafts = (state) => state.studentExams.localDrafts
 export const selectStudentLoading = (state) => state.studentExams.loading
 export const selectStudentLoadError = (state) => state.studentExams.error
+export const selectStudentReview = (state) => state.studentExams.review.delivery
+export const selectStudentReviewLoading = (state) => state.studentExams.review.loading
+export const selectStudentReviewError = (state) => state.studentExams.review.error
 
 export const selectAttemptsByExam = createSelector(
   [selectStudentAttempts, selectStudentLocalDrafts],
@@ -77,7 +101,7 @@ export const selectVisibleStudentExams = createSelector(
   (exams, attemptsByExam, cursosActivos) => {
     const byId = new Map(exams.map((exam) => [exam.id, exam]))
     for (const attempt of attemptsByExam.values()) {
-      if (!byId.has(attempt.examenId) && cursosActivos?.includes(attempt.cursoCodigo)) {
+      if (!byId.has(attempt.examenId) && (attempt.estadoEntrega === 'entregado' || cursosActivos?.includes(attempt.cursoCodigo))) {
         byId.set(attempt.examenId, {
           id: attempt.examenId,
           nombre: attempt.nombreExamen,
@@ -88,7 +112,7 @@ export const selectVisibleStudentExams = createSelector(
         })
       }
     }
-    return [...byId.values()]
+    return sortNewestFirst([...byId.values()])
   },
 )
 

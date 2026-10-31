@@ -3,7 +3,7 @@ import {
   query, runTransaction, where,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { addedCourseMembership, changedCourseMembership } from '../features/admin/adminRules'
+import { addedCourseMembership, changedCourseMembership, sanitizeCourseCode } from '../features/admin/adminRules'
 import { getSessionLegajo } from './authService'
 
 const users = collection(db, 'users')
@@ -65,6 +65,7 @@ export async function crearUsuarioAdmin({ legajo, nombre, apellido, rol, cursosA
     rol,
     activo: true,
     contrasenaActiva: false,
+    fechaCreacion: serverTimestamp(),
     cursosActivos: rol === 'alumno' ? courseCodes : [],
     ...(rol === 'alumno' ? { notas: [] } : {}),
   }
@@ -85,8 +86,10 @@ export async function crearUsuarioAdmin({ legajo, nombre, apellido, rol, cursosA
 }
 
 export async function crearCursoAdmin({ idCurso, materia, legajoProfe, comisiones = [] }) {
+  if (/\s/.test(String(idCurso ?? ''))) throw new Error('El código del curso no puede contener espacios.')
   const code = requiredText(idCurso, 'el código del curso')
   if (code.includes('/')) throw new Error('El código del curso no puede contener “/”.')
+  if (code !== sanitizeCourseCode(code)) throw new Error('El código del curso solo puede contener letras, números y guiones (-).')
   const parsedProfessor = validLegajo(legajoProfe)
   const commissions = uniqueTexts(comisiones)
   if (!commissions.length) throw new Error('Agregá al menos una comisión.')
@@ -95,6 +98,7 @@ export async function crearCursoAdmin({ idCurso, materia, legajoProfe, comisione
     materia: requiredText(materia, 'el nombre de la materia'),
     legajoProfe: parsedProfessor,
     comisiones: commissions,
+    fechaCreacion: serverTimestamp(),
   }
   const courseRef = doc(courses, code)
   const professorRef = doc(users, String(parsedProfessor))
@@ -131,6 +135,44 @@ export async function eliminarCursoAdmin(code) {
     transaction.delete(courseRef)
     if (professor?.exists()) transaction.update(professorRef, { cursosActivos: arrayRemove(code) })
   })
+}
+
+/** Elimina sólo referencias a cursos que siguen ausentes al verificarlas en Firestore. */
+export async function reconciliarCursosEliminadosAdmin(legajos) {
+  const legajoAdmin = await assertAdmin()
+  const ids = [...new Set(legajos.map((legajo) => String(validLegajo(legajo))))]
+  let usersUpdated = 0
+  let codesRemoved = 0
+  const failures = []
+
+  for (let index = 0; index < ids.length; index += 5) {
+    const results = await Promise.allSettled(ids.slice(index, index + 5).map(async (id) => {
+      const userRef = doc(users, id)
+      return runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(userRef)
+        if (!snapshot.exists() || !['alumno', 'profesor'].includes(snapshot.data().rol)) return 0
+        const codes = Array.isArray(snapshot.data().cursosActivos) ? snapshot.data().cursosActivos : []
+        const courseSnapshots = await Promise.all(codes.map((code) =>
+          typeof code === 'string' && code.length > 0 && !code.includes('/')
+            ? transaction.get(doc(courses, code)) : Promise.resolve(null)))
+        const missing = codes.filter((_code, position) => !courseSnapshots[position]?.exists())
+        if (missing.length) {
+          transaction.update(userRef, { cursosActivos: arrayRemove(...missing) })
+          transaction.set(doc(collection(db, 'auditoria')), {
+            accion: 'limpiar_cursos_eliminados', objetivo: id, codigos: missing,
+            legajoAdmin, fecha: serverTimestamp(),
+          })
+        }
+        return missing.length
+      })
+    }))
+    results.forEach((result, position) => {
+      if (result.status === 'fulfilled') {
+        if (result.value > 0) { usersUpdated += 1; codesRemoved += result.value }
+      } else failures.push(ids[index + position])
+    })
+  }
+  return { usersUpdated, codesRemoved, failures }
 }
 
 export async function obtenerUsuarioAdmin(legajo) {

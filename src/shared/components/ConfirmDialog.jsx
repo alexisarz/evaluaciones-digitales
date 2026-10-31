@@ -3,7 +3,7 @@ export default function ConfirmDialog({ titleId, title, children, actions }) {
     <section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <h2 id={titleId}>{title}</h2>
       {children}
-      <div>{actions}</div>
+      <div className="confirm-modal-actions">{actions}</div>
     </section>
   </div>
 }

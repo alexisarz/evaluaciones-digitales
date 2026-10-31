@@ -5,6 +5,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   runTransaction,
   serverTimestamp,
@@ -13,6 +14,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { examWindowMessage, getEffectiveExamStatus, getExamSchedule, getExamWindowStatus } from '../utils/examWindow'
+import { countDeliveredAttempts } from '../features/teacherExams/examRules'
+import { getPublishedGrade } from '../features/studentExams/studentGrades'
 
 export const attemptIdFor = (examId, legajo) => `${examId}_${Number(legajo)}`
 const attemptRef = (examId, legajo) => doc(db, 'examenesEntregados', attemptIdFor(examId, legajo))
@@ -105,6 +108,7 @@ export async function comenzarORecuperarExamen(exam, selectedTopic, profile) {
       fechaInicioProgramada: currentExam.fechaInicio ?? null,
       fechaFinExamen: Timestamp.fromMillis(schedule.endMs),
       fechaInicioAlumno: Timestamp.fromMillis(now),
+      fechaCreacion: Timestamp.fromMillis(now),
       fechaLimite: Timestamp.fromMillis(schedule.endMs),
       fechaEntrega: null,
       duracionMinutos: schedule.durationMinutes,
@@ -127,16 +131,69 @@ export async function obtenerIntento(examId, legajo) {
   return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
 }
 
+export async function obtenerCorreccionPublicadaAlumno(examId, legajo) {
+  if (!examId || !Number.isSafeInteger(Number(legajo))) throw new Error('No se pudo identificar la corrección solicitada.')
+  const attempt = await obtenerIntento(examId, legajo)
+  if (!attempt || attempt.examenId !== examId || Number(attempt.legajoAlumno) !== Number(legajo) || getPublishedGrade(attempt) === null) {
+    throw new Error('No hay una corrección publicada para este examen.')
+  }
+  return {
+    id: attempt.id,
+    examenId: attempt.examenId,
+    nombreExamen: attempt.nombreExamen,
+    materia: attempt.materia,
+    cursoCodigo: attempt.cursoCodigo,
+    comisionId: attempt.comisionId,
+    tema: attempt.tema,
+    preguntas: attempt.preguntas ?? [],
+    respuestas: attempt.respuestas ?? [],
+    correccion: attempt.correccion ?? [],
+    nota: attempt.nota,
+    fechaPublicacionNota: attempt.fechaPublicacionNota ?? null,
+  }
+}
+
+export function escucharIntentoAlumno(examId, legajo, onAttempt, onError) {
+  return onSnapshot(attemptRef(examId, legajo), (snapshot) => {
+    if (snapshot.exists()) onAttempt({ id: snapshot.id, ...snapshot.data() })
+  }, onError)
+}
+
+export function escucharEstadoExamenAlumno(examId, onExam, onError) {
+  return onSnapshot(doc(db, 'examenes', examId), (snapshot) => {
+    if (snapshot.exists()) onExam({ id: snapshot.id, ...snapshot.data() })
+  }, onError)
+}
+
 export async function obtenerIntentosAlumno(legajo) {
   const snapshot = await getDocs(query(collection(db, 'examenesEntregados'), where('legajoAlumno', '==', Number(legajo))))
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
 }
 
+export function escucharIntentosAlumno(legajo, onAttempts, onError) {
+  const attempts = query(collection(db, 'examenesEntregados'), where('legajoAlumno', '==', Number(legajo)))
+  return onSnapshot(attempts, (snapshot) => onAttempts(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), onError)
+}
+
+/** Cuenta sólo entregas finalizadas; los intentos en curso no se muestran como entregas. */
+export async function obtenerConteoEntregasPorProfesor(legajoProfe) {
+  const snapshot = await getDocs(query(collection(db, 'examenesEntregados'), where('legajoProfe', '==', Number(legajoProfe))))
+  return countDeliveredAttempts(snapshot.docs.map((item) => item.data()))
+}
+
+export function escucharConteoEntregasPorProfesor(legajoProfe, onCounts, onError) {
+  const deliveries = query(collection(db, 'examenesEntregados'), where('legajoProfe', '==', Number(legajoProfe)))
+  return onSnapshot(deliveries, (snapshot) => onCounts(countDeliveredAttempts(snapshot.docs.map((item) => item.data()))), onError)
+}
+
 export async function guardarProgresoRemoto(examId, legajo, respuestas, incidentes, ultimaEdicionMs) {
   return runTransaction(db, async (transaction) => {
     const ref = attemptRef(examId, legajo)
-    const snapshot = await transaction.get(ref)
+    const [snapshot, examSnapshot] = await Promise.all([
+      transaction.get(ref), transaction.get(doc(db, 'examenes', examId)),
+    ])
     if (!snapshot.exists() || snapshot.data().estadoEntrega !== 'en_curso') return
+    if (examSnapshot.data()?.fechaFinForzada) return
     const schedule = getExamSchedule({
       fechaInicio: snapshot.data().fechaInicioProgramada,
       duracionMinutos: snapshot.data().duracionMinutos,

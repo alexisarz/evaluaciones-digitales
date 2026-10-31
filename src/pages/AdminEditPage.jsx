@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AdminShell from '../components/AdminShell'
 import ConfirmDialog from '../shared/components/ConfirmDialog'
-import { loadAdminCourse, loadAdminUser, resetAdminPassword, saveAdminCourse, saveAdminUser, selectAdminCourses, selectAdminUsers, subscribeAdminData } from '../features/admin/adminSlice'
+import { loadAdminCourse, loadAdminUser, resetAdminPassword, saveAdminCourse, saveAdminUser, selectAdminCourses, selectAdminCoursesReady, selectAdminLoadError, selectAdminUsers, subscribeAdminData } from '../features/admin/adminSlice'
 
 const details = {
   alumno: { title: 'Editar alumno', section: 'alumnos' },
@@ -18,6 +18,8 @@ export default function AdminEditPage({ type }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const courses = useSelector(selectAdminCourses)
+  const coursesReady = useSelector(selectAdminCoursesReady)
+  const loadError = useSelector(selectAdminLoadError)
   const users = useSelector(selectAdminUsers)
   const [form, setForm] = useState(null)
   const [initial, setInitial] = useState(null)
@@ -58,7 +60,11 @@ export default function AdminEditPage({ type }) {
       if (type === 'curso') {
         await dispatch(saveAdminCourse({ ...form, comisiones: form.comisiones.split(/[,;|\n]/) })).unwrap()
       } else {
-        await dispatch(saveAdminUser({ ...form, rol: type })).unwrap()
+        if (type === 'alumno' && (!coursesReady || loadError)) throw new Error('No se pudo verificar la lista de cursos. Recargá la página e intentá nuevamente.')
+        const existingCodes = new Set(courses.map((course) => course.id ?? course.idCurso))
+        await dispatch(saveAdminUser({ ...form, rol: type,
+          ...(type === 'alumno' ? { cursosActivos: form.cursosActivos.filter((code) => existingCodes.has(code)) } : {}),
+        })).unwrap()
       }
       navigate(backPath, { replace: true })
     } catch (caught) { setError(caught.message || 'No se pudieron guardar los cambios.') }
@@ -98,7 +104,7 @@ export default function AdminEditPage({ type }) {
           <label>Apellido<input value={form.apellido} onChange={(event) => setForm((current) => ({ ...current, apellido: event.target.value }))} required /></label>
           <label>Estado<input value={form.activo ? 'Activo' : 'Inactivo'} disabled /></label>
         </div></section>
-        {type === 'alumno' && <section className="admin-form-card"><h2>Cursos activos</h2><div className="admin-course-options">{courses.map((course) => { const code = course.idCurso ?? course.id; return <label key={code}><input type="checkbox" checked={form.cursosActivos.includes(code)} onChange={() => toggleCourse(code)} disabled={!form.activo && !form.cursosActivos.includes(code)} /><span><strong>{code}</strong> · {course.materia}</span></label> })}</div></section>}
+        {type === 'alumno' && <section className="admin-form-card"><h2>Cursos asignados</h2>{!form.activo && <p className="admin-form-note">Las inscripciones quedan suspendidas mientras el alumno está de baja. Se restablecen al darlo de alta.</p>}<div className="admin-course-options">{courses.map((course) => { const code = course.idCurso ?? course.id; return <label key={code}><input type="checkbox" checked={form.cursosActivos.includes(code)} onChange={() => toggleCourse(code)} disabled={!form.activo && !form.cursosActivos.includes(code)} /><span><strong>{code}</strong> · {course.materia}</span></label> })}</div></section>}
         {type === 'profesor' && <section className="admin-form-card"><h2>Cursos a cargo</h2><p>{courses.filter((course) => Number(course.legajoProfe) === Number(form.legajo)).map((course) => course.idCurso ?? course.id).join(', ') || 'Sin cursos asignados.'}</p><p className="admin-form-note">Para cambiar un profesor responsable, editá la materia correspondiente.</p></section>}
         <section className="admin-form-card"><h2>Contraseña</h2><p>{form.contrasenaActiva ? 'La contraseña está activa.' : 'Pendiente de definir una contraseña.'}</p><button type="button" className="admin-reset-password" onClick={() => setDialog('reset')} disabled={resetting}>Restablecer contraseña</button></section>
       </>}

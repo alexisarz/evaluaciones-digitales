@@ -1,0 +1,15 @@
+.teacher-course-search { display: grid; gap: 8px; width: min(100%, 420px); color: #344767; font-size: 14px; font-weight: 800; }
+.teacher-course-search input { min-height: 48px; background: #fff; border: 1px solid #aab7ca; border-radius: 9px; }
+.teacher-course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; margin-top: 24px; }
+.teacher-course-card { display: flex; flex-direction: column; align-items: flex-start; padding: 25px; background: #fff; border: 1px solid #d7dfeb; border-radius: 15px; }
+.teacher-course-code { margin: 0; color: #315c9f; font-size: 14px; font-weight: 800; }
+.teacher-course-card h2 { margin: 10px 0 6px; font-size: 23px; }
+.teacher-course-card > p:not(.teacher-course-code) { margin: 0 0 22px; color: #68758b; }
+.teacher-course-card .primary-action { margin-top: auto; padding: 12px 18px; }
+.teacher-course-subtitle { margin: 8px 0 24px; color: #68758b; font-weight: 700; }
+.teacher-course-detail-tools { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.teacher-course-detail-tools > span { color: #68758b; font-weight: 700; }
+.teacher-course-table th, .teacher-course-table td { white-space: nowrap; }
+.teacher-course-table th:not(:first-child), .teacher-course-table td:not(:first-child) { text-align: center; }
+.course-grade-pending { color: #8a5a0b; font-size: 14px; font-weight: 700; }
+@media (max-width: 650px) { .teacher-course-detail-tools { align-items: stretch; flex-direction: column; }.teacher-course-table { min-width: 640px; } }

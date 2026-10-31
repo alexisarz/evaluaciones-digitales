@@ -6,14 +6,24 @@ import {
   attemptToDraft,
   clampDraftToExamEnd,
   entregarExamen,
+  escucharEstadoExamenAlumno,
+  escucharIntentoAlumno,
   guardarProgresoRemoto,
   obtenerIntento,
   registrarIncidente,
 } from '../services/examAttemptService'
 import { eliminarBorradorLocal, guardarBorradorLocal, obtenerBorradorLocal } from '../services/localExamDraft'
+import { forcedBackupId, hasUnsyncedForcedAnswers } from '../features/studentExams/forcedEndRules'
 import ExamQuestionContent from '../shared/components/ExamQuestionContent'
 
 const TAB_INCIDENT = 'Alumno salió de pestaña'
+
+async function guardarRespaldoForzado(draft) {
+  try {
+    await guardarBorradorLocal({ ...draft, id: forcedBackupId(draft.id), estadoEntrega: 'respaldo_cierre_forzado' })
+    return true
+  } catch { return false }
+}
 
 function timeLabel(milliseconds) {
   const seconds = Math.ceil(Math.max(0, milliseconds) / 1000)
@@ -31,6 +41,8 @@ export default function TakeExamPage() {
   const submittingRef = useRef(false)
   const savingRef = useRef(false)
   const expiredRef = useRef(false)
+  const remotelyClosedRef = useRef(false)
+  const preserveLocalRef = useRef(false)
   const [questionIndex, setQuestionIndex] = useState(0)
   const [now, setNow] = useState(() => Date.now())
   const [lastSavedAt, setLastSavedAt] = useState(null)
@@ -42,6 +54,7 @@ export default function TakeExamPage() {
   const [showTabWarning, setShowTabWarning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement))
+  const [forcedEnd, setForcedEnd] = useState(false)
 
   useEffect(() => {
     if (!examId) { setError('Falta el ID del examen.'); setLoading(false); return }
@@ -54,7 +67,11 @@ export default function TakeExamPage() {
         ])
         if (!mounted) return
         if (remote?.estadoEntrega === 'entregado') {
-          navigate(`/alumno/examenExistoso?id=${encodeURIComponent(examId)}`, { replace: true })
+          const localUnsynced = hasUnsyncedForcedAnswers(local, remote)
+          const backupSaved = localUnsynced && await guardarRespaldoForzado(local)
+          navigate(`/alumno/examenExistoso?id=${encodeURIComponent(examId)}`, {
+            replace: true, state: { forced: remote.motivoEntrega === 'finalizacion_profesor', localUnsynced, backupSaved },
+          })
           return
         }
         if (local?.estadoEntrega === 'pendiente_envio') {
@@ -84,6 +101,49 @@ export default function TakeExamPage() {
   }, [examId, navigate, user.cursosActivos, user.legajo])
 
   useEffect(() => {
+    if (!examId || !attempt || attempt.estadoEntrega !== 'en_curso') return undefined
+    return escucharIntentoAlumno(examId, user.legajo, (remote) => {
+      if (remote.estadoEntrega !== 'entregado' || submittingRef.current || remotelyClosedRef.current) return
+      remotelyClosedRef.current = true
+      submittingRef.current = true
+      const currentDraft = draftRef.current
+      const localUnsynced = hasUnsyncedForcedAnswers(currentDraft, remote)
+      preserveLocalRef.current = localUnsynced
+      if (draftRef.current) {
+        const closed = { ...draftRef.current, estadoEntrega: 'entregado', fechaLimiteMs: Date.now() }
+        draftRef.current = closed
+        setDraft(closed)
+      }
+      void (async () => {
+        const backupSaved = localUnsynced && currentDraft && await guardarRespaldoForzado(currentDraft)
+        if (!localUnsynced) await eliminarBorradorLocal(attemptIdFor(examId, user.legajo)).catch(() => {})
+        if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
+        navigate(`/alumno/examenExistoso?id=${encodeURIComponent(examId)}`, {
+          replace: true, state: { forced: remote.motivoEntrega === 'finalizacion_profesor', localUnsynced, backupSaved },
+        })
+      })()
+    }, () => {})
+  }, [attempt, examId, navigate, user.legajo])
+
+  useEffect(() => {
+    if (!examId || !attempt || attempt.estadoEntrega !== 'en_curso') return undefined
+    return escucharEstadoExamenAlumno(examId, (currentExam) => {
+      const forcedMs = currentExam.fechaFinForzada?.toMillis?.()
+      const current = draftRef.current
+      if (!Number.isFinite(forcedMs) || !current || current.estadoEntrega !== 'en_curso') return
+      expiredRef.current = true
+      setForcedEnd(true)
+      const locked = {
+        ...current, estadoEntrega: 'cierre_forzado',
+        fechaLimiteMs: Math.min(Number(current.fechaLimiteMs ?? forcedMs), forcedMs),
+        fechaFinExamenMs: forcedMs,
+      }
+      draftRef.current = locked
+      setDraft(locked)
+    }, () => {})
+  }, [attempt, examId])
+
+  useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
@@ -98,6 +158,11 @@ export default function TakeExamPage() {
       savedLocally = true
       setSaveState('local')
     } catch { setSaveState('local-error') }
+    if (draftRef.current?.estadoEntrega !== 'en_curso') {
+      if (!preserveLocalRef.current) await eliminarBorradorLocal(current.id).catch(() => {})
+      savingRef.current = false
+      return
+    }
     try {
       if (navigator.onLine) {
         await guardarProgresoRemoto(current.examenId, current.legajoAlumno, current.respuestas, current.incidentes, current.ultimaEdicionMs)
@@ -146,7 +211,7 @@ export default function TakeExamPage() {
 
   const remaining = Math.max(0, (draft?.fechaLimiteMs ?? now) - now)
 
-  const changeAnswer = (event) => {
+  const changeAnswer = (value) => {
     const current = draftRef.current
     if (!current || remaining === 0) return
     const question = current.preguntas[questionIndex]
@@ -154,7 +219,7 @@ export default function TakeExamPage() {
     const next = {
       ...current,
       respuestas: current.respuestas.map((answer) => answer.idPregunta === question.idPregunta
-        ? { ...answer, respuestaTexto: event.target.value }
+        ? typeof value === 'string' ? { ...answer, respuestaTexto: value } : { ...answer, respuestaTexto: '', respuestaEstructurada: value }
         : answer),
       ultimaEdicionMs: Date.now(),
     }
@@ -180,13 +245,18 @@ export default function TakeExamPage() {
     } catch { setSaveState('local-error') }
     try {
       if (!navigator.onLine) throw new Error('Sin conexión')
-      await Promise.race([
+      const delivered = await Promise.race([
         entregarExamen(attempt, pending, motivo),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado')), 12_000)),
       ])
-      await eliminarBorradorLocal(pending.id).catch(() => {})
+      const localUnsynced = hasUnsyncedForcedAnswers(pending, delivered)
+      const backupSaved = localUnsynced && await guardarRespaldoForzado(pending)
+      if (!localUnsynced) await eliminarBorradorLocal(pending.id).catch(() => {})
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
-      navigate(`/alumno/examenExistoso?id=${encodeURIComponent(examId)}`, { replace: true })
+      navigate(`/alumno/examenExistoso?id=${encodeURIComponent(examId)}`, {
+        replace: true,
+        state: { forced: current.estadoEntrega === 'cierre_forzado' || delivered?.motivoEntrega === 'finalizacion_profesor', localUnsynced, backupSaved },
+      })
     } catch {
       setDeliveryError(savedLocally
         ? 'Ocurrió un error al entregar el examen. Tus respuestas quedaron guardadas en este dispositivo; reintentá el envío.'
@@ -217,11 +287,11 @@ export default function TakeExamPage() {
       <div className={`exam-countdown ${remaining <= 30 * 60_000 ? 'urgent' : ''}`} role="timer" aria-label="Tiempo restante">Tiempo {timeLabel(remaining)}</div>
     </header>
     <div className="exam-restriction" role="note"><span className="exam-restriction-icon" aria-hidden="true">⚠</span><span>Modo examen restringido: {fullscreen ? 'pantalla completa activa.' : 'activá la pantalla completa.'} Salir de la pestaña se reporta como incidente.</span>{!fullscreen && <button type="button" onClick={() => document.documentElement.requestFullscreen?.()?.catch(() => {})}>Activar pantalla completa</button>}</div>
-    {remaining === 0 && <div className="exam-timeout" role="alert">Se agotó el tiempo. El examen está bloqueado y sólo se puede entregar.</div>}
+    {remaining === 0 && <div className="exam-timeout" role="alert">{forcedEnd ? 'El profesor finalizó el examen. Se están entregando las respuestas guardadas.' : 'Se agotó el tiempo. El examen está bloqueado y sólo se puede entregar.'}</div>}
     {remaining > 0 && remaining <= 5 * 60_000 && <div className="exam-time-warning" role="alert">Quedan menos de 5 minutos para entregar.</div>}
     <section className="exam-question-area">
       <div className="exam-question-meta"><span>Pregunta {question ? questionIndex + 1 : 0} de {draft.preguntas.length}</span><span className={`save-pill ${saveState}`}>{saveState === 'saved' && savedSeconds !== null ? `● Guardado hace ${savedSeconds} s` : saveState === 'local-error' ? 'No se pudo guardar en este dispositivo' : saveState === 'local' ? '● Guardado localmente · sincronización pendiente' : '● Guardando…'}</span></div>
-      {question ? <ExamQuestionContent question={question} answer={answer?.respuestaTexto ?? ''} onAnswerChange={changeAnswer} disabled={!canEdit} /> : <div className="notice">Este tema no tiene preguntas. Podés entregar el examen.</div>}
+      {question ? <ExamQuestionContent question={question} answer={answer?.respuestaEstructurada ?? answer?.respuestaTexto ?? ''} onAnswerChange={changeAnswer} disabled={!canEdit} /> : <div className="notice">Este tema no tiene preguntas. Podés entregar el examen.</div>}
     </section>
     <footer className="exam-footer"><div className="exam-nav"><button type="button" className="secondary-action" onClick={() => setQuestionIndex((index) => index - 1)} disabled={!canEdit || questionIndex === 0}>← Anterior</button><button type="button" className="primary-action button-action" onClick={() => setQuestionIndex((index) => index + 1)} disabled={!canEdit || questionIndex >= draft.preguntas.length - 1}>Siguiente →</button></div><div className="exam-submit"><p className="error" role="alert">{deliveryError}</p><button type="button" className="danger-action" onClick={() => remaining === 0 || draft.estadoEntrega === 'pendiente_envio' ? void submit(draft.motivoEntrega ?? 'tiempo_agotado') : setShowSubmit(true)} disabled={submitting}>{submitting ? 'ENTREGANDO…' : draft.estadoEntrega === 'pendiente_envio' ? 'REINTENTAR ENTREGA' : 'ENTREGAR EXAMEN'}</button></div></footer>
     {showSubmit && <div className="modal-backdrop" role="presentation"><section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="submit-title"><h2 id="submit-title">Entregar examen</h2><p>Estás por finalizar y entregar tu examen. Una vez hecho no podrás editarlo, te recomendamos revisarlo. ¿Estás seguro de que querés entregarlo?</p><div><button type="button" className="secondary-action" onClick={() => setShowSubmit(false)}>Cancelar</button><button type="button" className="danger-action" onClick={() => void submit('manual')}>Entregar</button></div></section></div>}

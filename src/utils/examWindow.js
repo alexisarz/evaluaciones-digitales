@@ -14,7 +14,9 @@ export function getExamSchedule(exam) {
     return null
   }
 
-  const endMs = startMs + durationMinutes * 60_000
+  const scheduledEndMs = startMs + durationMinutes * 60_000
+  const forcedEndMs = toMillis(exam?.fechaFinForzada)
+  const endMs = Number.isFinite(forcedEndMs) ? Math.min(scheduledEndMs, forcedEndMs) : scheduledEndMs
   const deadlineMs = Math.min(startMs + toleranceMinutes * 60_000, endMs)
   return { startMs, toleranceMinutes, durationMinutes, deadlineMs, endMs }
 }
