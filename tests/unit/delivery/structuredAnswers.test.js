@@ -5,10 +5,10 @@ import {
   emptyDecisionTable, emptyDecisionTree, hasStructuredContent,
   tableAddColumn, tableAddRow, tableRemoveColumn, tableRemoveRow,
   tableUpdateCell, treeAddBranch, treeRemoveBranch, treeUpdateBranch, treeUpdateNode,
-} from '../../src/features/examQuestions/structuredAnswers'
-import { expectedAnswerFor, withoutExpectedAnswers } from '../../src/features/teacherExams/expectedAnswers'
-import DecisionTable from '../../src/shared/components/DecisionTable'
-import DecisionTree from '../../src/shared/components/DecisionTree'
+} from '../../../src/features/examQuestions/structuredAnswers'
+import { expectedAnswerFor, withoutExpectedAnswers } from '../../../src/features/teacherExams/expectedAnswers'
+import DecisionTable from '../../../src/shared/components/DecisionTable'
+import DecisionTree from '../../../src/shared/components/DecisionTree'
 
 describe('respuestas estructuradas', () => {
   it('agrega y quita filas y columnas conservando las celdas existentes', () => {

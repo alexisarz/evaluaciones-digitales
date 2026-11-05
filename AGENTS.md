@@ -8,3 +8,4 @@
 - Conservar el estado transitorio de formularios, modales y cronómetros en hooks locales cuando no se comparte entre vistas. El estado de rendición con autoguardado debe mantenerse encapsulado y probarse antes de moverlo.
 - Extraer componentes de interfaz reutilizables a `src/shared/components/` y lógica específica de dominio a `src/features/<dominio>/`. Evitar duplicar UI y reglas de negocio.
 - Al cambiar lógica de estado, añadir o actualizar pruebas y ejecutar `npm run test:unit`, `npm run test:e2e` cuando aplique, `npm run lint` y `npm run build`.
+- Para flujos críticos de autenticación, rendición, entrega, corrección y administración, cubrir casos válidos, inválidos y límites; ejecutar también `npm run test:integration` y `npm run test:coverage`. Mantener los mínimos de `vitest.config.js` y consultar la estrategia en `docs/testing.md`.

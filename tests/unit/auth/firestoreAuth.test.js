@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hashPassword } from '../../src/services/authService'
+import { hashPassword } from '../../../src/services/authService'
 
 describe('credenciales del prototipo Firestore', () => {
   it('deriva la misma clave con la misma sal, sin guardar el texto original', async () => {

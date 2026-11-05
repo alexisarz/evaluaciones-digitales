@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import reducer, { attemptsReceived, loadExamParticipants, selectExamParticipantRows, selectFilteredExamParticipantRows, studentsReceived } from '../../src/features/teacherExams/examParticipantsSlice'
-import { blankQuestionsForTopic, buildExamParticipants, participantDeliveryStatus } from '../../src/features/teacherExams/examParticipantsRules'
-import { sessionCleared } from '../../src/features/auth/authSlice'
-import { getExamSchedule, getExamWindowStatus } from '../../src/utils/examWindow'
+import reducer, { attemptsReceived, loadExamParticipants, selectExamParticipantRows, selectFilteredExamParticipantRows, studentsReceived } from '../../../src/features/teacherExams/examParticipantsSlice'
+import { blankQuestionsForTopic, buildExamParticipants, participantDeliveryStatus } from '../../../src/features/teacherExams/examParticipantsRules'
+import { sessionCleared } from '../../../src/features/auth/authSlice'
+import { getExamSchedule, getExamWindowStatus } from '../../../src/utils/examWindow'
 
 const exam = {
   id: 'exam-1', estado: 'programado', legajoProfe: 200045,

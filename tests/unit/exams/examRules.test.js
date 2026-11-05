@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import previewReducer, { previewCleared, previewOpened, selectExamPreviewDraft } from '../../src/features/teacherExams/examPreviewSlice'
-import { assertExamCanPublish, countDeliveredAttempts, hasTenPointsPerTopic, isExamArchivable, isExamDeletable, isValidQuestionScore, savedTopicScore } from '../../src/features/teacherExams/examRules'
-import { selectVisibleTeacherExams } from '../../src/features/teacherExams/teacherExamsSlice'
+import previewReducer, { previewCleared, previewOpened, selectExamPreviewDraft } from '../../../src/features/teacherExams/examPreviewSlice'
+import { assertExamCanPublish, countDeliveredAttempts, hasTenPointsPerTopic, isExamArchivable, isExamDeletable, isValidQuestionScore, savedTopicScore } from '../../../src/features/teacherExams/examRules'
+import { selectVisibleTeacherExams } from '../../../src/features/teacherExams/teacherExamsSlice'
 
 const futureExam = {
   estado: 'programado',

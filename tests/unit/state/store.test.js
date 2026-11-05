@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import authReducer, { login, logout, sessionCleared } from '../../src/features/auth/authSlice'
-import teacherReducer, { archiveTeacherExam, archiveTeacherExams, deliveryCountsReceived, moveTeacherExamsToFinalArchive, selectFilteredFinalizedTeacherExams, selectFilteredTeacherExams, selectTeacherExamCounts, selectFinalizedTeacherExams, selectVisibleTeacherExams } from '../../src/features/teacherExams/teacherExamsSlice'
-import studentReducer, { attemptUpserted, localDraftRemoved, selectAttemptsByExam, selectVisibleStudentExams } from '../../src/features/studentExams/studentExamsSlice'
-import adminReducer, { coursesReceived, selectFilteredAdminRows, usersReceived } from '../../src/features/admin/adminSlice'
-import { serializeFirestore } from '../../src/shared/serializeFirestore'
+import authReducer, { login, logout, sessionCleared } from '../../../src/features/auth/authSlice'
+import teacherReducer, { archiveTeacherExam, archiveTeacherExams, deliveryCountsReceived, moveTeacherExamsToFinalArchive, selectFilteredFinalizedTeacherExams, selectFilteredTeacherExams, selectTeacherExamCounts, selectFinalizedTeacherExams, selectVisibleTeacherExams } from '../../../src/features/teacherExams/teacherExamsSlice'
+import studentReducer, { attemptUpserted, localDraftRemoved, selectAttemptsByExam, selectVisibleStudentExams } from '../../../src/features/studentExams/studentExamsSlice'
+import adminReducer, { coursesReceived, selectFilteredAdminRows, usersReceived } from '../../../src/features/admin/adminSlice'
+import { serializeFirestore } from '../../../src/shared/serializeFirestore'
 
 const makeStore = () => configureStore({ reducer: { auth: authReducer, teacherExams: teacherReducer, studentExams: studentReducer, admin: adminReducer } })
 

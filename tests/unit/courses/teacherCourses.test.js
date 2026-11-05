@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import { buildCourseGradebook, filterCourseList, filterCourseStudents } from '../../src/features/teacherCourses/courseGrades'
-import teacherCoursesReducer, { courseAttemptsReceived, courseCountReceived, courseStudentsReceived, loadTeacherCourseDetail, loadTeacherCourses, selectMyCourseGradebook, selectMyCourses } from '../../src/features/teacherCourses/teacherCoursesSlice'
+import { buildCourseGradebook, filterCourseList, filterCourseStudents } from '../../../src/features/teacherCourses/courseGrades'
+import teacherCoursesReducer, { courseAttemptsReceived, courseCountReceived, courseStudentsReceived, loadTeacherCourseDetail, loadTeacherCourses, selectMyCourseGradebook, selectMyCourses } from '../../../src/features/teacherCourses/teacherCoursesSlice'
 
 const students = [
   { legajo: 101, nombre: 'Ana', apellido: 'López' },

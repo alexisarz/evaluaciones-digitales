@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import { obtenerCorreccionPublicadaAlumno } from '../../src/services/examAttemptService'
-import studentReducer, { loadPublishedStudentCorrection, selectAttemptsByExam, selectStudentReview, studentAttemptsReceived } from '../../src/features/studentExams/studentExamsSlice'
-import { sessionCleared } from '../../src/features/auth/authSlice'
-import { getPublishedGrade } from '../../src/features/studentExams/studentGrades'
+import { obtenerCorreccionPublicadaAlumno } from '../../../src/services/examAttemptService'
+import studentReducer, { loadPublishedStudentCorrection, selectAttemptsByExam, selectStudentReview, studentAttemptsReceived } from '../../../src/features/studentExams/studentExamsSlice'
+import { sessionCleared } from '../../../src/features/auth/authSlice'
+import { getPublishedGrade } from '../../../src/features/studentExams/studentGrades'
 
 const { records } = vi.hoisted(() => ({ records: new Map() }))
 
-vi.mock('../../src/firebase', () => ({ db: {} }))
+vi.mock('../../../src/firebase', () => ({ db: {} }))
 vi.mock('firebase/firestore', async (importOriginal) => {
   const actual = await importOriginal()
   return {

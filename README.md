@@ -16,7 +16,7 @@ src/shared/components/   piezas visuales reutilizables
 src/pages/               pantallas conectadas a las rutas
 ```
 
-Para comprobar el estado sin depender de Firebase: `npm run test:unit`. También están disponibles `npm run lint` y `npm run build`.
+La estrategia de caja blanca, la estructura de pruebas y los umbrales de cobertura están en [docs/testing.md](docs/testing.md). Para comprobar la lógica sin depender de Firebase: `npm run test:unit`, `npm run test:integration` y `npm run test:coverage`. También están disponibles `npm run lint` y `npm run build`.
 
 ## Ejecutar
 

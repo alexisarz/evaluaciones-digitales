@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { sortNewestFirst } from '../../src/shared/sortByCreation'
-import { selectAdminRows } from '../../src/features/admin/adminSlice'
-import { selectVisibleStudentExams } from '../../src/features/studentExams/studentExamsSlice'
-import { buildExamParticipants } from '../../src/features/teacherExams/examParticipantsRules'
-import { buildCourseGradebook } from '../../src/features/teacherCourses/courseGrades'
+import { sortNewestFirst } from '../../../src/shared/sortByCreation'
+import { selectAdminRows } from '../../../src/features/admin/adminSlice'
+import { selectVisibleStudentExams } from '../../../src/features/studentExams/studentExamsSlice'
+import { buildExamParticipants } from '../../../src/features/teacherExams/examParticipantsRules'
+import { buildCourseGradebook } from '../../../src/features/teacherCourses/courseGrades'
 
 describe('orden de creación en los listados', () => {
   it('ordena fechas de Firestore y fechas serializadas de más nuevas a más antiguas', () => {

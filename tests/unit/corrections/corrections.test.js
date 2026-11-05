@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import reducer, { finishCorrection, loadCorrectionDelivery, loadCorrectionExam, saveCorrectionDraft, selectCorrectionExpectedAnswers, selectFilteredCorrectionDeliveries } from '../../src/features/corrections/correctionsSlice'
-import { correctionTone, correctionTotal, isValidScoreInput, normalizeCorrection } from '../../src/features/corrections/correctionRules'
-import { selectFinalizedTeacherExams } from '../../src/features/teacherExams/teacherExamsSlice'
-import { getPublishedGrade } from '../../src/features/studentExams/studentGrades'
-import { sessionCleared } from '../../src/features/auth/authSlice'
+import reducer, { finishCorrection, loadCorrectionDelivery, loadCorrectionExam, saveCorrectionDraft, selectCorrectionExpectedAnswers, selectFilteredCorrectionDeliveries } from '../../../src/features/corrections/correctionsSlice'
+import { correctionTone, correctionTotal, isValidScoreInput, normalizeCorrection } from '../../../src/features/corrections/correctionRules'
+import { selectFinalizedTeacherExams } from '../../../src/features/teacherExams/teacherExamsSlice'
+import { getPublishedGrade } from '../../../src/features/studentExams/studentGrades'
+import { sessionCleared } from '../../../src/features/auth/authSlice'
 
 const questions = [{ idPregunta: 1, puntajeMaximo: 2 }, { idPregunta: 2, puntajeMaximo: 8 }]
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeStudentsFromSnapshot } from '../../src/shared/activeEnrollment'
+import { activeStudentsFromSnapshot } from '../../../src/shared/activeEnrollment'
 
 describe('inscripciones visibles', () => {
   it('incluye solo alumnos activos aunque conserven cursosActivos al darse de baja', () => {

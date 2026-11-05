@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { forcedBackupId, hasUnsyncedForcedAnswers } from '../../src/features/studentExams/forcedEndRules'
+import { forcedBackupId, hasUnsyncedForcedAnswers } from '../../../src/features/studentExams/forcedEndRules'
 
 describe('respuestas locales tras finalización del profesor', () => {
   it('detecta respuestas que no llegaron a la entrega forzada', () => {

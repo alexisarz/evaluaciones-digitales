@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { addedCourseMembership, changedCourseMembership, findOrphanCourseAssignments, sanitizeCourseCode } from '../../src/features/admin/adminRules'
-import { crearCursoAdmin } from '../../src/services/adminService'
+import { addedCourseMembership, changedCourseMembership, findOrphanCourseAssignments, sanitizeCourseCode } from '../../../src/features/admin/adminRules'
+import { crearCursoAdmin } from '../../../src/services/adminService'
 
 describe('reglas de asignación de cursos', () => {
   it('detecta movimientos de curso durante una rendición', () => {

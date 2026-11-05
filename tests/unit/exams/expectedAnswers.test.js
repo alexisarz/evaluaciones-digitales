@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Timestamp } from 'firebase/firestore'
-import { expectedAnswerFor, mergeExpectedAnswers, withoutExpectedAnswers } from '../../src/features/teacherExams/expectedAnswers'
-import { actualizarExamen, borrarExamen, crearExamen, obtenerExamenPorId, obtenerExamenesPorCursos } from '../../src/services/examsService'
+import { expectedAnswerFor, mergeExpectedAnswers, withoutExpectedAnswers } from '../../../src/features/teacherExams/expectedAnswers'
+import { actualizarExamen, borrarExamen, crearExamen, obtenerExamenPorId, obtenerExamenesPorCursos } from '../../../src/services/examsService'
 
 const { records } = vi.hoisted(() => ({ records: new Map() }))
 
-vi.mock('../../src/firebase', () => ({ db: {} }))
+vi.mock('../../../src/firebase', () => ({ db: {} }))
 vi.mock('firebase/firestore', async (importOriginal) => {
   const actual = await importOriginal()
   const reference = (path) => ({ path, id: path.split('/').at(-1) })
